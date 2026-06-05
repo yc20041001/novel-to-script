@@ -1,14 +1,11 @@
 import { useMemo, useState } from 'react';
-import { message } from 'antd';
-import { Layout } from 'antd';
 import yaml from 'js-yaml';
 import { API_BASE_URL, fetchSchema, generateScript, validateYaml } from './api/scriptApi';
 import AppHeader from './components/AppHeader';
 import ChapterList from './components/ChapterList';
 import YamlWorkspace from './components/YamlWorkspace';
 import SchemaModal from './components/SchemaModal';
-
-const { Content } = Layout;
+import { useToast } from './components/ui/toast';
 
 const initialChapters = [
   {
@@ -44,6 +41,7 @@ notes: []
 `;
 
 function App() {
+  const toast = useToast();
   const [chapters, setChapters] = useState(initialChapters);
   const [yamlText, setYamlText] = useState(emptyYaml);
   const [loading, setLoading] = useState(false);
@@ -89,7 +87,7 @@ function App() {
 
   const handleGenerate = async () => {
     if (validation) {
-      message.warning(validation);
+      toast.warning(validation);
       return;
     }
 
@@ -99,12 +97,12 @@ function App() {
       setYamlText(result.yaml);
       setUsedMock(result.used_mock);
       if (result.used_mock) {
-        message.info('未配置 DeepSeek API Key，已返回演示剧本。');
+        toast.info('未配置 DeepSeek API Key，已返回演示剧本。');
       } else {
-        message.success('剧本 YAML 已生成。');
+        toast.success('剧本 YAML 已生成。');
       }
     } catch (error) {
-      message.error(error?.response?.data?.detail || '生成失败，请检查后端服务。');
+      toast.error(error?.response?.data?.detail || '生成失败，请检查后端服务。');
     } finally {
       setLoading(false);
     }
@@ -112,7 +110,7 @@ function App() {
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(yamlText);
-    message.success('YAML 已复制。');
+    toast.success('YAML 已复制。');
   };
 
   const handleDownload = () => {
@@ -130,7 +128,7 @@ function App() {
     try {
       yaml.load(yamlText);
     } catch (error) {
-      message.error(`YAML 格式错误：${error.message}`);
+      toast.error(`YAML 格式错误：${error.message}`);
       return;
     }
 
@@ -139,13 +137,13 @@ function App() {
     try {
       const result = await validateYaml(yamlText);
       if (result.valid) {
-        message.success('YAML 已通过 Schema 校验。');
+        toast.success('YAML 已通过 Schema 校验。');
       } else {
         const detail = result.errors?.length ? result.errors.join('；') : '未知 Schema 校验错误';
-        message.error(`YAML 不符合 Schema：${detail}`);
+        toast.error(`YAML 不符合 Schema：${detail}`);
       }
     } catch {
-      message.error('后端 YAML 校验服务不可用，请确认 FastAPI 已启动。');
+      toast.error('后端 YAML 校验服务不可用，请确认 FastAPI 已启动。');
     } finally {
       setYamlChecking(false);
     }
@@ -165,14 +163,14 @@ function App() {
   };
 
   return (
-    <Layout className="app-shell">
+    <div className="app-shell">
       <AppHeader
         chapterCount={chapters.length}
         validation={validation}
         apiBaseUrl={API_BASE_URL}
       />
 
-      <Content className="workspace">
+      <main className="workspace">
         <ChapterList
           chapters={chapters}
           onUpdateChapter={updateChapter}
@@ -193,14 +191,14 @@ function App() {
           onFormatCheck={handleFormatCheck}
           onSchema={handleSchema}
         />
-      </Content>
+      </main>
 
       <SchemaModal
         open={schemaOpen}
         schemaText={schemaText}
         onClose={() => setSchemaOpen(false)}
       />
-    </Layout>
+    </div>
   );
 }
 

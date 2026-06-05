@@ -1,25 +1,16 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { ConfigProvider } from 'antd';
-import zhCN from 'antd/locale/zh_CN';
 import App from './App.jsx';
+import { ToastProvider } from './components/ui/toast.jsx';
+import { TooltipProvider } from './components/ui/tooltip.jsx';
 import './styles.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <ConfigProvider
-      locale={zhCN}
-      theme={{
-        token: {
-          colorPrimary: '#2563eb',
-          borderRadius: 6,
-          fontFamily:
-            'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-        },
-      }}
-    >
-      <App />
-    </ConfigProvider>
+    <TooltipProvider>
+      <ToastProvider>
+        <App />
+      </ToastProvider>
+    </TooltipProvider>
   </React.StrictMode>,
 );
-

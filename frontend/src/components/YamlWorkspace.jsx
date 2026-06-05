@@ -1,14 +1,8 @@
-import { Alert, Button, Space, Tooltip, Typography } from 'antd';
-import {
-  CopyOutlined,
-  DownloadOutlined,
-  FileTextOutlined,
-  ReloadOutlined,
-  ThunderboltOutlined,
-} from '@ant-design/icons';
+import { Copy, Download, FileText, RefreshCw, Sparkles } from 'lucide-react';
 import Editor from '@monaco-editor/react';
-
-const { Text, Title } = Typography;
+import { Alert } from './ui/alert';
+import { Button } from './ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 
 function YamlWorkspace({
   yamlText,
@@ -26,41 +20,60 @@ function YamlWorkspace({
     <section className="panel output-panel">
       <div className="panel-heading">
         <div>
-          <Title level={4}>剧本 YAML</Title>
-          <Text type="secondary">可直接编辑、复制或下载为 .yaml 文件。</Text>
+          <h2 className="panel-title">剧本 YAML</h2>
+          <p className="panel-description">可直接编辑、复制或下载为 .yaml 文件。</p>
         </div>
-        <Space wrap>
-          <Tooltip title="生成剧本">
-            <Button
-              type="primary"
-              icon={<ThunderboltOutlined />}
-              loading={loading}
-              onClick={onGenerate}
-            >
-              生成
-            </Button>
+        <div className="flex flex-wrap gap-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button loading={loading} onClick={onGenerate}>
+                <Sparkles className="h-4 w-4" />
+                生成
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>生成剧本</TooltipContent>
           </Tooltip>
-          <Tooltip title="校验 YAML">
-            <Button icon={<ReloadOutlined />} loading={yamlChecking} onClick={onFormatCheck} />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="outline" size="icon" loading={yamlChecking} onClick={onFormatCheck}>
+                {!yamlChecking && <RefreshCw className="h-4 w-4" />}
+                <span className="sr-only">校验 YAML</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>校验 YAML</TooltipContent>
           </Tooltip>
-          <Tooltip title="复制">
-            <Button icon={<CopyOutlined />} onClick={onCopy} />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="outline" size="icon" onClick={onCopy}>
+                <Copy className="h-4 w-4" />
+                <span className="sr-only">复制</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>复制</TooltipContent>
           </Tooltip>
-          <Tooltip title="下载">
-            <Button icon={<DownloadOutlined />} onClick={onDownload} />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="outline" size="icon" onClick={onDownload}>
+                <Download className="h-4 w-4" />
+                <span className="sr-only">下载</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>下载</TooltipContent>
           </Tooltip>
-          <Tooltip title="查看 JSON Schema">
-            <Button icon={<FileTextOutlined />} onClick={onSchema} />
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="outline" size="icon" onClick={onSchema}>
+                <FileText className="h-4 w-4" />
+                <span className="sr-only">查看 JSON Schema</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>查看 JSON Schema</TooltipContent>
           </Tooltip>
-        </Space>
+        </div>
       </div>
 
       {usedMock && (
-        <Alert
-          type="info"
-          showIcon
-          message="当前使用演示输出。配置后端 DeepSeek API Key 后，将根据输入章节实时生成。"
-        />
+        <Alert>当前使用演示输出。配置后端 DeepSeek API Key 后，将根据输入章节实时生成。</Alert>
       )}
 
       <div className="editor-frame">
