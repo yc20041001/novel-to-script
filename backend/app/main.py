@@ -2,10 +2,16 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
-from app.models import GenerateRequest, GenerateResponse, ScriptDocument
+from app.models import (
+    GenerateRequest,
+    GenerateResponse,
+    ScriptDocument,
+    ValidateYamlRequest,
+    ValidateYamlResponse,
+)
 from app.services.deepseek_service import DeepSeekError, generate_script_with_deepseek
 from app.services.mock_service import build_mock_script
-from app.services.yaml_service import script_to_yaml
+from app.services.yaml_service import script_to_yaml, validate_yaml
 
 settings = get_settings()
 
@@ -44,4 +50,10 @@ async def generate(request: GenerateRequest) -> GenerateResponse:
         script = build_mock_script([chapter.title for chapter in request.chapters])
 
     return GenerateResponse(script=script, yaml=script_to_yaml(script), used_mock=used_mock)
+
+
+@app.post("/api/validate-yaml", response_model=ValidateYamlResponse)
+async def validate_yaml_endpoint(request: ValidateYamlRequest) -> ValidateYamlResponse:
+    valid, errors = validate_yaml(request.yaml)
+    return ValidateYamlResponse(valid=valid, errors=errors)
 

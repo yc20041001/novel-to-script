@@ -17,5 +17,10 @@ export async function fetchSchema() {
   return response.data;
 }
 
+export async function validateYaml(yamlText) {
+  const response = await client.post('/api/validate-yaml', { yaml: yamlText });
+  return response.data;
+}
+
 export { API_BASE_URL };
 

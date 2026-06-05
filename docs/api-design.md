@@ -72,6 +72,7 @@ JSON 字段使用 snake_case，与 FastAPI/Pydantic 后端保持一致。
 | `/api/health` | GET | 健康检查 | 已实现 |
 | `/api/schema` | GET | 获取 ScriptDocument JSON Schema | 已实现 |
 | `/api/generate` | POST | 输入章节并生成剧本 YAML | 已实现 |
+| `/api/validate-yaml` | POST | 校验 YAML 是否符合 ScriptDocument Schema | 已实现 |
 
 ## 4. 通用错误格式
 
@@ -318,7 +319,65 @@ POST /api/generate
 
 新增字段应为可选字段，避免破坏当前调用方。
 
-## 8. 剧本对象结构
+## 8. POST /api/validate-yaml
+
+### 8.1 用途
+
+接收用户编辑后的 YAML 文本，校验其语法是否正确，并进一步检查内容是否符合后端 `ScriptDocument` Schema。
+
+该接口用于支撑“可编辑、可进一步打磨”的剧本初稿工作流。用户编辑 YAML 后，可以通过后端 Schema 校验确认结构仍然可被系统解析。
+
+### 8.2 请求
+
+```http
+POST /api/validate-yaml
+```
+
+请求体：
+
+```json
+{
+  "yaml": "metadata:\n  title: 雨夜来信\n..."
+}
+```
+
+字段说明：
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| yaml | string | 是 | 待校验的 YAML 文本 |
+
+### 8.3 成功校验响应
+
+状态码：`200 OK`
+
+```json
+{
+  "valid": true,
+  "errors": []
+}
+```
+
+### 8.4 校验失败响应
+
+状态码：`200 OK`
+
+```json
+{
+  "valid": false,
+  "errors": [
+    "metadata -> title: Field required"
+  ]
+}
+```
+
+设计说明：
+
+- YAML 语法错误、空内容、根节点类型错误和 Schema 校验失败都会返回 `valid=false`。
+- 接口使用 `200 OK` 返回业务校验结果，便于前端统一展示错误详情。
+- 请求体格式错误仍由 FastAPI 返回 `422 Unprocessable Entity`。
+
+## 9. 剧本对象结构
 
 `script` 字段遵循 `ScriptDocument`。
 
@@ -346,7 +405,7 @@ POST /api/generate
 
 详细字段以 [YAML Schema 文档](yaml-schema.md) 和 `/api/schema` 为准。
 
-## 9. 前端调用设计
+## 10. 前端调用设计
 
 前端 API 封装位于：
 
@@ -354,7 +413,7 @@ POST /api/generate
 frontend/src/api/scriptApi.js
 ```
 
-### 9.1 generateScript
+### 10.1 generateScript
 
 ```js
 export async function generateScript(chapters) {
@@ -374,7 +433,7 @@ frontend/src/App.jsx
 - 生成剧本 YAML。
 - 接收 `used_mock`，提示是否为演示输出。
 
-### 9.2 fetchSchema
+### 10.2 fetchSchema
 
 ```js
 export async function fetchSchema() {
@@ -387,7 +446,20 @@ export async function fetchSchema() {
 
 - 在前端 Schema 弹窗中展示后端 JSON Schema。
 
-## 10. AI 供应商接口边界
+### 10.3 validateYaml
+
+```js
+export async function validateYaml(yamlText) {
+  const response = await client.post('/api/validate-yaml', { yaml: yamlText });
+  return response.data;
+}
+```
+
+用途：
+
+- 将用户编辑后的 YAML 发给后端进行语法和 Schema 校验。
+
+## 11. AI 供应商接口边界
 
 前端不直接访问 DeepSeek。后端的 `deepseek_service.py` 负责调用：
 
@@ -423,11 +495,11 @@ POST {DEEPSEEK_BASE_URL}/chat/completions
 - 后端可以统一处理重试、超时、解析和 Schema 校验。
 - 前端只关心业务接口，不关心模型供应商细节。
 
-## 11. 未来扩展 API
+## 12. 未来扩展 API
 
 以下接口当前未实现，用于说明数据库版本的 API 蓝图。
 
-### 11.1 项目接口
+### 12.1 项目接口
 
 | 接口 | 方法 | 说明 |
 | --- | --- | --- |
@@ -437,21 +509,21 @@ POST {DEEPSEEK_BASE_URL}/chat/completions
 | `/api/projects/{project_id}` | PATCH | 更新项目标题或说明 |
 | `/api/projects/{project_id}` | DELETE | 删除项目 |
 
-### 11.2 章节接口
+### 12.2 章节接口
 
 | 接口 | 方法 | 说明 |
 | --- | --- | --- |
 | `/api/projects/{project_id}/chapters` | PUT | 批量保存章节 |
 | `/api/projects/{project_id}/chapters` | GET | 获取项目章节 |
 
-### 11.3 生成任务接口
+### 12.3 生成任务接口
 
 | 接口 | 方法 | 说明 |
 | --- | --- | --- |
 | `/api/projects/{project_id}/generation-jobs` | POST | 创建 AI 生成任务 |
 | `/api/generation-jobs/{job_id}` | GET | 查询任务状态 |
 
-### 11.4 剧本版本接口
+### 12.4 剧本版本接口
 
 | 接口 | 方法 | 说明 |
 | --- | --- | --- |
@@ -459,13 +531,13 @@ POST {DEEPSEEK_BASE_URL}/chat/completions
 | `/api/script-versions/{version_id}` | GET | 获取某个剧本版本 |
 | `/api/script-versions/{version_id}` | PATCH | 保存人工修改后的 YAML |
 
-### 11.5 导出接口
+### 12.5 导出接口
 
 | 接口 | 方法 | 说明 |
 | --- | --- | --- |
 | `/api/script-versions/{version_id}/exports` | POST | 导出 YAML、JSON、TXT 或 DOCX |
 
-## 12. API 版本策略
+## 13. API 版本策略
 
 当前 MVP 使用 `/api/*`，暂不引入版本号。
 
@@ -482,7 +554,7 @@ POST {DEEPSEEK_BASE_URL}/chat/completions
 - 字段重命名、类型变化、响应结构变化应进入新版本。
 - 旧版本至少保留到前端完成迁移。
 
-## 13. 幂等性与超时
+## 14. 幂等性与超时
 
 当前 `/api/generate` 是即时生成接口，不保证幂等。相同章节多次调用可能得到不同剧本，因为 AI 生成具有随机性。
 
@@ -498,7 +570,7 @@ POST {DEEPSEEK_BASE_URL}/chat/completions
 - 失败重试。
 - 历史结果复用。
 
-## 14. 安全与权限
+## 15. 安全与权限
 
 当前本地 MVP：
 
@@ -515,14 +587,14 @@ POST {DEEPSEEK_BASE_URL}/chat/completions
 - 日志脱敏。
 - AI 调用成本控制。
 
-## 15. API 验收标准
+## 16. API 验收标准
 
 | 项目 | 标准 |
 | --- | --- |
 | 健康检查 | `GET /api/health` 返回 200 |
 | Schema | `GET /api/schema` 返回 ScriptDocument JSON Schema |
 | 生成接口 | `POST /api/generate` 接收 3 个以上章节并返回 YAML |
+| YAML 校验接口 | `POST /api/validate-yaml` 能返回 valid 和 errors |
 | 校验 | 章节不足 3 个时返回 422 |
 | 安全 | 前端不直接暴露 DeepSeek API Key |
 | 兼容性 | 后续新增字段应保持向后兼容 |
-
