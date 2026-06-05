@@ -99,10 +99,10 @@ Merge API design document
 前端固定使用：
 
 ```text
-React + Vite + Ant Design + Monaco Editor + axios + js-yaml
+React + Vite + Tailwind CSS + shadcn/ui + motion + Monaco Editor + axios + js-yaml
 ```
 
-不使用 Element Plus，因为 Element Plus 属于 Vue 生态。
+不使用 Element Plus，因为 Element Plus 属于 Vue 生态。当前项目 UI 组件以 shadcn/ui 为主，样式以 Tailwind CSS 为主，动效以 motion 为主。
 
 ### 4.2 目录规范
 
@@ -140,7 +140,9 @@ frontend/src/
 
 ### 4.4 UI 规范
 
-- 使用 Ant Design 组件保持界面一致。
+- 使用 shadcn/ui 组件保持基础控件一致。
+- 使用 Tailwind CSS 管理布局、间距、颜色和响应式样式。
+- 使用 motion 做轻量动效，避免影响核心编辑体验。
 - 编辑器使用 Monaco Editor。
 - 用户操作必须有 loading、success 或 error 反馈。
 - 生成按钮请求期间应禁用或显示 loading。
@@ -502,4 +504,3 @@ git push
 ```
 
 该流程保证每次开发都有清晰分支记录，也符合当前项目的提交要求。
-

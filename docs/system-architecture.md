@@ -30,7 +30,7 @@ flowchart LR
 
 | 层级 | 技术 | 职责 |
 | --- | --- | --- |
-| 表现层 | React + Vite + Ant Design + Monaco Editor | 章节输入、状态提示、YAML 展示、复制下载 |
+| 表现层 | React + Vite + Tailwind CSS + shadcn/ui + motion + Monaco Editor | 章节输入、状态提示、YAML 展示、复制下载 |
 | 应用层 | FastAPI + Pydantic + PyYAML | 请求校验、AI 编排、结构校验、YAML 转换 |
 | AI 能力层 | DeepSeek API | 小说理解、人物抽取、场景拆分、剧本生成 |
 
@@ -356,4 +356,3 @@ flowchart TD
 原因：Pydantic 同时支持运行时校验和 JSON Schema 导出，可以减少“代码 Schema”和“文档 Schema”不一致的问题。
 
 备选方案：手写 JSON Schema。该方案更标准，但与后端模型容易重复维护。
-

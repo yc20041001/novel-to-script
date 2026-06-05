@@ -234,7 +234,7 @@ React 应用入口。
 职责：
 
 - 挂载 React 应用。
-- 配置 Ant Design 中文语言包。
+- 引入 Tailwind CSS 全局样式，并为 shadcn/ui 与 motion 提供应用入口。
 - 配置主题色和字体。
 
 ### 5.4 frontend/src/App.jsx
@@ -452,4 +452,3 @@ frontend/src/__tests__/
 | 配置安全 | 只提交 `.env.example`，不提交 `.env` |
 | 构建产物隔离 | `node_modules`、`dist`、`.venv` 不进入 Git |
 | 扩展清晰 | 文档说明后续组件化、数据库化和测试目录 |
-

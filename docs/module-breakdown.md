@@ -43,7 +43,7 @@ frontend/src/App.jsx
 职责：
 
 - 初始化 React 应用。
-- 配置 Ant Design 中文语言包和主题。
+- 配置 Tailwind CSS 全局样式、shadcn/ui 组件主题和 motion 动效基础能力。
 - 组织页面整体布局。
 - 管理核心页面状态。
 
@@ -501,4 +501,3 @@ backend/app/services/
 | 演示回退模块 | 无 API Key 时系统仍可生成演示 YAML |
 | 文档模块 | 需求、架构、模块、Schema 文档齐全 |
 | 部署模块 | 前端可构建并发布到 GitHub Pages |
-
