@@ -16,8 +16,9 @@
 ## 3. 前端检查
 
 - [ ] 是否仍使用 React + Vite？
-- [ ] 是否仍使用 Ant Design？
-- [ ] 是否没有引入 Element Plus？
+- [ ] 是否仍使用 Tailwind CSS + shadcn/ui？
+- [ ] motion 是否只用于必要的轻量交互动效？
+- [ ] 是否没有引入 Element Plus 或 Ant Design 作为主要 UI 组件库？
 - [ ] API 请求是否放在 `frontend/src/api/`？
 - [ ] 是否运行 `npm run build`？
 
@@ -41,4 +42,3 @@
 - [ ] 是否列出修改文件？
 - [ ] 是否说明验证命令和结果？
 - [ ] 是否说明未完成事项或风险？
-

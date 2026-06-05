@@ -66,7 +66,9 @@ frontend/
 ### 可做事项
 
 - React 页面和组件开发。
-- Ant Design 交互控件。
+- shadcn/ui 交互控件。
+- Tailwind CSS 样式和响应式布局。
+- motion 轻量交互动效。
 - Monaco Editor 集成。
 - axios API 请求封装。
 - js-yaml 格式校验。
@@ -75,6 +77,7 @@ frontend/
 ### 必须遵守
 
 - 不使用 Element Plus。
+- 不使用 Ant Design 作为主要 UI 组件库。
 - 不在前端保存 DeepSeek API Key。
 - API 请求统一放在 `frontend/src/api/`。
 - 页面文本和按钮状态要清晰。
@@ -154,4 +157,3 @@ Codex 负责：
 - 代码审查。
 
 Claude 发现设计文档不清晰时，应反馈问题，而不是擅自改设计。
-

@@ -4,7 +4,7 @@ Novel2Script 是一款 AI 小说转结构化剧本工具，面向希望把小说
 
 ## 技术栈
 
-- 前端：React + Vite + Ant Design + Monaco Editor + axios + js-yaml
+- 前端：React + Vite + Tailwind CSS + shadcn/ui + motion + Monaco Editor + axios + js-yaml
 - 后端：Python + FastAPI + PyYAML + Pydantic + httpx
 - AI：DeepSeek API
 - Schema：Markdown 文档 + Pydantic 模型 + JSON Schema 思路

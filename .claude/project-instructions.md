@@ -13,7 +13,7 @@ Novel2Script 是一款 AI 小说转结构化剧本工具，支持输入 3 个章
 技术栈固定为：
 
 ```text
-前端：React + Vite + Ant Design + Monaco Editor + axios + js-yaml
+前端：React + Vite + Tailwind CSS + shadcn/ui + motion + Monaco Editor + axios + js-yaml
 后端：Python + FastAPI + PyYAML + Pydantic + requests/httpx
 AI：DeepSeek API
 Schema：Markdown 文档 + Pydantic 模型 + JSON Schema 思路
@@ -54,7 +54,7 @@ Schema：Markdown 文档 + Pydantic 模型 + JSON Schema 思路
 
 - 擅自替换技术栈。
 - 擅自把 React 改成 Vue。
-- 擅自把 Ant Design 改成其他 UI 库。
+- 擅自把 Tailwind CSS、shadcn/ui、motion 改成其他 UI 或动效方案。
 - 擅自改变 `/api/generate`、`/api/schema`、`/api/health` 的契约。
 - 擅自删除或重写 Codex 设计文档。
 - 大范围重构无关代码。
@@ -121,4 +121,3 @@ PY
 ```
 
 如果没有运行测试，必须说明原因。
-
