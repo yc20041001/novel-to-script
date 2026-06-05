@@ -79,3 +79,12 @@ class GenerateResponse(BaseModel):
     yaml: str
     used_mock: bool = Field(default=False, description="是否使用演示数据")
 
+
+class ValidateYamlRequest(BaseModel):
+    yaml: str = Field(..., description="待校验的 YAML 文本")
+
+
+class ValidateYamlResponse(BaseModel):
+    valid: bool = Field(..., description="YAML 是否符合 Schema")
+    errors: list[str] = Field(default_factory=list, description="校验错误详情")
+
