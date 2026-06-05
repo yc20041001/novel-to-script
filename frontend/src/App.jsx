@@ -1,33 +1,14 @@
 import { useMemo, useState } from 'react';
-import Editor from '@monaco-editor/react';
+import { message } from 'antd';
+import { Layout } from 'antd';
 import yaml from 'js-yaml';
-import {
-  Alert,
-  Button,
-  Card,
-  Divider,
-  Input,
-  Layout,
-  Modal,
-  Space,
-  Tag,
-  Tooltip,
-  Typography,
-  message,
-} from 'antd';
-import {
-  CopyOutlined,
-  DeleteOutlined,
-  DownloadOutlined,
-  FileTextOutlined,
-  PlusOutlined,
-  ReloadOutlined,
-  ThunderboltOutlined,
-} from '@ant-design/icons';
 import { API_BASE_URL, fetchSchema, generateScript } from './api/scriptApi';
+import AppHeader from './components/AppHeader';
+import ChapterList from './components/ChapterList';
+import YamlWorkspace from './components/YamlWorkspace';
+import SchemaModal from './components/SchemaModal';
 
-const { Header, Content } = Layout;
-const { Text, Title } = Typography;
+const { Content } = Layout;
 
 const initialChapters = [
   {
@@ -167,154 +148,41 @@ function App() {
 
   return (
     <Layout className="app-shell">
-      <Header className="topbar">
-        <div>
-          <Title level={3} className="brand">
-            Novel2Script
-          </Title>
-          <Text className="subtitle">AI 小说转结构化剧本 YAML 工具</Text>
-        </div>
-        <Space wrap>
-          <Tag color={validation ? 'orange' : 'green'}>{chapters.length} 个章节</Tag>
-          <Tag color="blue">API: {API_BASE_URL}</Tag>
-        </Space>
-      </Header>
+      <AppHeader
+        chapterCount={chapters.length}
+        validation={validation}
+        apiBaseUrl={API_BASE_URL}
+      />
 
       <Content className="workspace">
-        <section className="panel input-panel">
-          <div className="panel-heading">
-            <div>
-              <Title level={4}>小说章节</Title>
-              <Text type="secondary">输入至少 3 章，系统会拆分人物、地点、场景和节拍。</Text>
-            </div>
-            <Tooltip title="添加章节">
-              <Button icon={<PlusOutlined />} onClick={addChapter} />
-            </Tooltip>
-          </div>
+        <ChapterList
+          chapters={chapters}
+          onUpdateChapter={updateChapter}
+          onAddChapter={addChapter}
+          onRemoveChapter={removeChapter}
+          validation={validation}
+        />
 
-          {validation && <Alert type="warning" showIcon message={validation} />}
-
-          <div className="chapter-list">
-            {chapters.map((chapter, index) => (
-              <Card
-                key={`${chapter.title}-${index}`}
-                size="small"
-                title={
-                  <Input
-                    value={chapter.title}
-                    onChange={(event) => updateChapter(index, 'title', event.target.value)}
-                    placeholder="章节标题"
-                    variant="borderless"
-                  />
-                }
-                extra={
-                  <Tooltip title="删除章节">
-                    <Button
-                      icon={<DeleteOutlined />}
-                      danger
-                      disabled={chapters.length <= 3}
-                      onClick={() => removeChapter(index)}
-                    />
-                  </Tooltip>
-                }
-              >
-                <Input.TextArea
-                  value={chapter.content}
-                  onChange={(event) => updateChapter(index, 'content', event.target.value)}
-                  placeholder="粘贴该章节正文"
-                  autoSize={{ minRows: 5, maxRows: 9 }}
-                  showCount
-                />
-              </Card>
-            ))}
-          </div>
-        </section>
-
-        <section className="panel output-panel">
-          <div className="panel-heading">
-            <div>
-              <Title level={4}>剧本 YAML</Title>
-              <Text type="secondary">可直接编辑、复制或下载为 .yaml 文件。</Text>
-            </div>
-            <Space wrap>
-              <Tooltip title="生成剧本">
-                <Button
-                  type="primary"
-                  icon={<ThunderboltOutlined />}
-                  loading={loading}
-                  onClick={handleGenerate}
-                >
-                  生成
-                </Button>
-              </Tooltip>
-              <Tooltip title="校验 YAML">
-                <Button icon={<ReloadOutlined />} onClick={handleFormatCheck} />
-              </Tooltip>
-              <Tooltip title="复制">
-                <Button icon={<CopyOutlined />} onClick={handleCopy} />
-              </Tooltip>
-              <Tooltip title="下载">
-                <Button icon={<DownloadOutlined />} onClick={handleDownload} />
-              </Tooltip>
-              <Tooltip title="查看 JSON Schema">
-                <Button icon={<FileTextOutlined />} onClick={handleSchema} />
-              </Tooltip>
-            </Space>
-          </div>
-
-          {usedMock && (
-            <Alert
-              type="info"
-              showIcon
-              message="当前使用演示输出。配置后端 DeepSeek API Key 后，将根据输入章节实时生成。"
-            />
-          )}
-
-          <div className="editor-frame">
-            <Editor
-              height="100%"
-              language="yaml"
-              value={yamlText}
-              theme="vs-dark"
-              options={{
-                minimap: { enabled: false },
-                fontSize: 14,
-                wordWrap: 'on',
-                scrollBeyondLastLine: false,
-                lineNumbersMinChars: 3,
-              }}
-              onChange={(value) => setYamlText(value || '')}
-            />
-          </div>
-        </section>
+        <YamlWorkspace
+          yamlText={yamlText}
+          onYamlChange={setYamlText}
+          loading={loading}
+          usedMock={usedMock}
+          onGenerate={handleGenerate}
+          onCopy={handleCopy}
+          onDownload={handleDownload}
+          onFormatCheck={handleFormatCheck}
+          onSchema={handleSchema}
+        />
       </Content>
 
-      <Modal
-        title="ScriptDocument JSON Schema"
+      <SchemaModal
         open={schemaOpen}
-        onCancel={() => setSchemaOpen(false)}
-        footer={null}
-        width={900}
-      >
-        <Divider />
-        <div className="schema-view">
-          <Editor
-            height="460px"
-            language="json"
-            value={schemaText}
-            theme="vs-dark"
-            options={{
-              readOnly: true,
-              minimap: { enabled: false },
-              wordWrap: 'on',
-              scrollBeyondLastLine: false,
-            }}
-          />
-        </div>
-      </Modal>
+        schemaText={schemaText}
+        onClose={() => setSchemaOpen(false)}
+      />
     </Layout>
   );
 }
 
 export default App;
-
