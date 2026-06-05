@@ -14,6 +14,7 @@ function YamlWorkspace({
   yamlText,
   onYamlChange,
   loading,
+  yamlChecking,
   usedMock,
   onGenerate,
   onCopy,
@@ -40,7 +41,7 @@ function YamlWorkspace({
             </Button>
           </Tooltip>
           <Tooltip title="校验 YAML">
-            <Button icon={<ReloadOutlined />} onClick={onFormatCheck} />
+            <Button icon={<ReloadOutlined />} loading={yamlChecking} onClick={onFormatCheck} />
           </Tooltip>
           <Tooltip title="复制">
             <Button icon={<CopyOutlined />} onClick={onCopy} />

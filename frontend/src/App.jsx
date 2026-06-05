@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { message } from 'antd';
 import { Layout } from 'antd';
 import yaml from 'js-yaml';
-import { API_BASE_URL, fetchSchema, generateScript } from './api/scriptApi';
+import { API_BASE_URL, fetchSchema, generateScript, validateYaml } from './api/scriptApi';
 import AppHeader from './components/AppHeader';
 import ChapterList from './components/ChapterList';
 import YamlWorkspace from './components/YamlWorkspace';
@@ -47,6 +47,7 @@ function App() {
   const [chapters, setChapters] = useState(initialChapters);
   const [yamlText, setYamlText] = useState(emptyYaml);
   const [loading, setLoading] = useState(false);
+  const [yamlChecking, setYamlChecking] = useState(false);
   const [schemaOpen, setSchemaOpen] = useState(false);
   const [schemaText, setSchemaText] = useState('');
   const [usedMock, setUsedMock] = useState(false);
@@ -124,12 +125,29 @@ function App() {
     URL.revokeObjectURL(url);
   };
 
-  const handleFormatCheck = () => {
+  const handleFormatCheck = async () => {
+    // 1) 客户端本地 YAML 语法校验
     try {
       yaml.load(yamlText);
-      message.success('YAML 格式有效。');
     } catch (error) {
       message.error(`YAML 格式错误：${error.message}`);
+      return;
+    }
+
+    // 2) 调用后端校验 Schema
+    setYamlChecking(true);
+    try {
+      const result = await validateYaml(yamlText);
+      if (result.valid) {
+        message.success('YAML 已通过 Schema 校验。');
+      } else {
+        const detail = result.errors?.length ? result.errors.join('；') : '未知 Schema 校验错误';
+        message.error(`YAML 不符合 Schema：${detail}`);
+      }
+    } catch {
+      message.error('后端 YAML 校验服务不可用，请确认 FastAPI 已启动。');
+    } finally {
+      setYamlChecking(false);
     }
   };
 
@@ -167,6 +185,7 @@ function App() {
           yamlText={yamlText}
           onYamlChange={setYamlText}
           loading={loading}
+          yamlChecking={yamlChecking}
           usedMock={usedMock}
           onGenerate={handleGenerate}
           onCopy={handleCopy}
