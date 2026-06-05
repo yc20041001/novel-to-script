@@ -49,13 +49,24 @@ novel-to-script/
     ├── index.html
     ├── package-lock.json
     ├── package.json
+    ├── postcss.config.js
+    ├── tailwind.config.js
     ├── vite.config.js
     └── src/
         ├── App.jsx
         ├── main.jsx
         ├── styles.css
-        └── api/
-            └── scriptApi.js
+        ├── api/
+        │   └── scriptApi.js
+        ├── components/
+        │   ├── AppHeader.jsx
+        │   ├── ChapterCard.jsx
+        │   ├── ChapterList.jsx
+        │   ├── SchemaModal.jsx
+        │   ├── YamlWorkspace.jsx
+        │   └── ui/
+        └── lib/
+            └── utils.js
 ```
 
 ## 3. 根目录设计
@@ -195,13 +206,24 @@ frontend/
 ├── index.html
 ├── package-lock.json
 ├── package.json
+├── postcss.config.js
+├── tailwind.config.js
 ├── vite.config.js
 └── src/
     ├── App.jsx
     ├── main.jsx
     ├── styles.css
-    └── api/
-        └── scriptApi.js
+    ├── api/
+    │   └── scriptApi.js
+    ├── components/
+    │   ├── AppHeader.jsx
+    │   ├── ChapterCard.jsx
+    │   ├── ChapterList.jsx
+    │   ├── SchemaModal.jsx
+    │   ├── YamlWorkspace.jsx
+    │   └── ui/
+    └── lib/
+        └── utils.js
 ```
 
 ### 5.1 frontend/package.json
@@ -227,17 +249,28 @@ Vite 配置文件。
 - 配置开发端口 `5173`。
 - 配置 GitHub Pages 子路径 `base: '/novel-to-script/'`。
 
-### 5.3 frontend/src/main.jsx
+### 5.3 frontend/tailwind.config.js 和 frontend/postcss.config.js
+
+Tailwind CSS 配置文件。
+
+职责：
+
+- 配置 Tailwind 扫描的文件范围。
+- 定义 shadcn/ui 风格的颜色 token、圆角和主题变量。
+- 配置 PostCSS 让 Vite 构建 Tailwind 样式。
+
+### 5.4 frontend/src/main.jsx
 
 React 应用入口。
 
 职责：
 
 - 挂载 React 应用。
-- 引入 Tailwind CSS 全局样式，并为 shadcn/ui 与 motion 提供应用入口。
-- 配置主题色和字体。
+- 引入 Tailwind CSS 全局样式。
+- 挂载 TooltipProvider 和 ToastProvider。
+- 为 shadcn/ui 风格组件和 motion toast 动效提供运行环境。
 
-### 5.4 frontend/src/App.jsx
+### 5.5 frontend/src/App.jsx
 
 当前主页面组件。
 
@@ -249,9 +282,48 @@ React 应用入口。
 - 支持复制、下载和 YAML 格式校验。
 - 展示 JSON Schema 弹窗。
 
-设计原因：当前 MVP 页面规模较小，集中在一个组件中便于快速交付。后续功能增多后应拆分组件。
+设计原因：`App.jsx` 保留页面状态和业务方法，具体 UI 交给 `components/` 内的组件负责。
 
-### 5.5 frontend/src/api/
+### 5.6 frontend/src/components/
+
+前端页面组件目录。
+
+当前文件：
+
+| 文件 | 职责 |
+| --- | --- |
+| `AppHeader.jsx` | 顶部标题、章节数和 API 地址 |
+| `ChapterCard.jsx` | 单个章节标题和正文编辑 |
+| `ChapterList.jsx` | 章节列表、添加章节和章节校验提示 |
+| `YamlWorkspace.jsx` | YAML 编辑器、生成、校验、复制、下载和 Schema 按钮 |
+| `SchemaModal.jsx` | JSON Schema 弹窗 |
+| `ui/` | shadcn/ui 风格基础组件 |
+
+### 5.7 frontend/src/components/ui/
+
+本地 UI 基础组件目录。
+
+职责：
+
+- 保存 shadcn/ui 风格的 Button、Card、Input、Dialog、Tooltip、Toast 等基础组件。
+- 避免引入大型运行时 UI 框架。
+- 让页面样式由 Tailwind CSS 控制。
+
+### 5.8 frontend/src/lib/
+
+前端工具函数目录。
+
+当前文件：
+
+```text
+utils.js
+```
+
+职责：
+
+- 提供 `cn()` 工具函数，用于合并 Tailwind className。
+
+### 5.9 frontend/src/api/
 
 前端 API 封装目录。
 
@@ -266,15 +338,18 @@ scriptApi.js
 - 配置 API Base URL。
 - 封装 `generateScript`。
 - 封装 `fetchSchema`。
+- 封装 `validateYaml`。
 
 设计原因：API 调用集中封装，页面组件不直接拼接 URL，便于后续替换后端地址和统一错误处理。
 
-### 5.6 frontend/src/styles.css
+### 5.10 frontend/src/styles.css
 
 全局样式文件。
 
 职责：
 
+- 引入 Tailwind base、components、utilities。
+- 定义 shadcn/ui 风格主题变量。
 - 定义页面布局。
 - 定义左右工作区。
 - 定义编辑器容器样式。
