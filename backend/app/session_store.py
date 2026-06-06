@@ -45,10 +45,14 @@ class InMemorySessionStore(SessionStore):
 class RedisSessionStore(SessionStore):
     """Redis session 存储。"""
 
-    def __init__(self, redis_url: str) -> None:
+    def __init__(self, redis_url: str, password: str | None = None) -> None:
         import redis.asyncio as aioredis
 
-        self._redis = aioredis.from_url(redis_url, decode_responses=True)
+        self._redis = aioredis.from_url(
+            redis_url,
+            decode_responses=True,
+            password=password,
+        )
 
     async def ping(self) -> None:
         await self._redis.ping()

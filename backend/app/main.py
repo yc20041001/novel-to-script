@@ -23,11 +23,15 @@ async def init_session_store(app: FastAPI) -> None:
     from app.session_store import InMemorySessionStore, RedisSessionStore
 
     try:
-        store = RedisSessionStore(settings.redis_url)
+        store = RedisSessionStore(
+            settings.redis_url,
+            password=settings.redis_password or None,
+        )
         await store.ping()
         app.state.session_store = store
-    except Exception:
-        print("⚠ Redis 不可用，使用内存 session 存储（重启后登录失效）")
+        print("✓ Redis session store connected")
+    except Exception as exc:
+        print(f"⚠ Redis 不可用，使用内存 session 存储（重启后登录失效）：{exc.__class__.__name__}")
         app.state.session_store = InMemorySessionStore()
 
 
