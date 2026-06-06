@@ -1,8 +1,11 @@
-import { Copy, Download, FileText, RefreshCw, Sparkles } from 'lucide-react';
+import { CheckCircle2, Copy, Download, FileText, RefreshCw, Sparkles } from 'lucide-react';
 import Editor from '@monaco-editor/react';
 import { Alert } from './ui/alert';
 import { Button } from './ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
+
+const outputIconButtonClass =
+  'border-slate-500/30 bg-white/10 text-slate-100 hover:bg-teal-400/20 hover:text-white';
 
 function YamlWorkspace({
   yamlText,
@@ -23,7 +26,7 @@ function YamlWorkspace({
           <h2 className="panel-title">剧本 YAML</h2>
           <p className="panel-description">可直接编辑、复制或下载为 .yaml 文件。</p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="output-toolbar">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button loading={loading} onClick={onGenerate}>
@@ -35,7 +38,13 @@ function YamlWorkspace({
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="outline" size="icon" loading={yamlChecking} onClick={onFormatCheck}>
+              <Button
+                variant="outline"
+                size="icon"
+                loading={yamlChecking}
+                onClick={onFormatCheck}
+                className={outputIconButtonClass}
+              >
                 {!yamlChecking && <RefreshCw className="h-4 w-4" />}
                 <span className="sr-only">校验 YAML</span>
               </Button>
@@ -44,7 +53,7 @@ function YamlWorkspace({
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="outline" size="icon" onClick={onCopy}>
+              <Button variant="outline" size="icon" onClick={onCopy} className={outputIconButtonClass}>
                 <Copy className="h-4 w-4" />
                 <span className="sr-only">复制</span>
               </Button>
@@ -53,7 +62,7 @@ function YamlWorkspace({
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="outline" size="icon" onClick={onDownload}>
+              <Button variant="outline" size="icon" onClick={onDownload} className={outputIconButtonClass}>
                 <Download className="h-4 w-4" />
                 <span className="sr-only">下载</span>
               </Button>
@@ -62,7 +71,7 @@ function YamlWorkspace({
           </Tooltip>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="outline" size="icon" onClick={onSchema}>
+              <Button variant="outline" size="icon" onClick={onSchema} className={outputIconButtonClass}>
                 <FileText className="h-4 w-4" />
                 <span className="sr-only">查看 JSON Schema</span>
               </Button>
@@ -74,6 +83,12 @@ function YamlWorkspace({
 
       {usedMock && (
         <Alert>当前使用演示输出。配置后端 DeepSeek API Key 后，将根据输入章节实时生成。</Alert>
+      )}
+      {!usedMock && (
+        <div className="flex items-center gap-2 rounded-md border border-teal-400/20 bg-teal-400/10 px-3 py-2 text-sm text-teal-50">
+          <CheckCircle2 className="h-4 w-4 text-teal-300" />
+          YAML 工作区已连接后端 Schema 校验
+        </div>
       )}
 
       <div className="editor-frame">

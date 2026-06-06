@@ -1,3 +1,4 @@
+import { SlidersHorizontal } from 'lucide-react';
 import { Input } from './ui/input';
 
 const STYLE_SUGGESTIONS = ['短剧', '影视剧', '广播剧', '舞台剧'];
@@ -22,11 +23,7 @@ function SuggestionChips({ suggestions, selected, onSelect }) {
           key={item}
           type="button"
           onClick={() => onSelect(item)}
-          className={`rounded-md border px-2.5 py-0.5 text-xs transition-colors ${
-            selected === item
-              ? 'border-primary bg-primary/10 text-primary'
-              : 'border-border text-muted-foreground hover:border-muted-foreground hover:text-foreground'
-          }`}
+          className={`option-chip ${selected === item ? 'option-chip-active' : 'option-chip-idle'}`}
         >
           {item}
         </button>
@@ -41,8 +38,13 @@ function GenerationOptions({ options, onChange }) {
   };
 
   return (
-    <div className="rounded-lg border bg-card p-4">
-      <h3 className="mb-3 text-sm font-semibold text-foreground">生成选项</h3>
+    <div className="options-panel">
+      <div className="mb-3 flex items-center gap-2">
+        <div className="grid h-8 w-8 place-items-center rounded-lg bg-amber-100 text-amber-800">
+          <SlidersHorizontal className="h-4 w-4" />
+        </div>
+        <h3 className="text-sm font-semibold text-foreground">生成选项</h3>
+      </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <OptionField label="剧本类型" id="option-genre">
           <Input

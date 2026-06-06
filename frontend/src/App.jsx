@@ -200,7 +200,7 @@ function App() {
 
   if (authLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
+      <div className="login-shell">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
@@ -221,7 +221,7 @@ function App() {
       />
 
       <main className="workspace">
-        <div className="flex flex-col gap-[18px]">
+        <div className="side-stack flex flex-col gap-5">
           <ChapterList
             chapters={chapters}
             onUpdateChapter={updateChapter}
