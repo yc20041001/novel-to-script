@@ -1,5 +1,9 @@
 from fastapi.testclient import TestClient
+from app.config import get_settings
 from app.main import app
+
+# 使用 mock fallback，避免测试调用真实 DeepSeek API
+get_settings().deepseek_api_key = ""
 
 client = TestClient(app)
 

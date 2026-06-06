@@ -9,6 +9,13 @@ class Settings(BaseSettings):
     deepseek_model: str = "deepseek-chat"
     frontend_origin: str = "http://localhost:5173"
 
+    # Redis & Session
+    redis_url: str = "redis://localhost:6379/0"
+    session_cookie_name: str = "novel2script_session"
+    session_ttl_seconds: int = 86400
+    demo_username: str = "admin"
+    demo_password: str = "admin123"
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
 

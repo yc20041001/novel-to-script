@@ -128,6 +128,7 @@ Python 后端依赖列表。
 - PyYAML
 - httpx
 - requests
+- redis
 - python-dotenv
 
 设计原因：使用 `requirements.txt` 便于课程项目快速安装依赖，避免引入更复杂的 Python 包管理工具。
@@ -140,8 +141,30 @@ FastAPI 应用入口。
 
 - 创建 FastAPI 应用。
 - 配置 CORS。
-- 定义 `/api/health`、`/api/schema`、`/api/generate`。
+- 定义 `/api/health`、`/api/schema`、`/api/generate`、`/api/validate-yaml`。
+- 注册认证路由。
+- 通过 lifespan 初始化 Redis SessionStore，Redis 不可用时回退到内存存储。
 - 串联 DeepSeek 服务、演示回退和 YAML 转换。
+
+### 4.3.1 backend/app/auth.py
+
+登录认证路由。
+
+职责：
+
+- 定义 `/api/auth/login`、`/api/auth/me`、`/api/auth/logout`。
+- 登录成功后写入 HttpOnly Session Cookie。
+- 退出时删除服务端 Session 并清除 Cookie。
+
+### 4.3.2 backend/app/session_store.py
+
+Session 存储模块。
+
+职责：
+
+- 定义 SessionStore 抽象接口。
+- 提供 RedisSessionStore。
+- 提供 InMemorySessionStore 作为测试和本地回退方案。
 
 ### 4.4 backend/app/models.py
 
@@ -334,6 +357,7 @@ utils.js
 
 ```text
 scriptApi.js
+authApi.js
 ```
 
 职责：
@@ -342,6 +366,7 @@ scriptApi.js
 - 封装 `generateScript`。
 - 封装 `fetchSchema`。
 - 封装 `validateYaml`。
+- 封装 `login`、`checkAuth`、`logout`。
 
 设计原因：API 调用集中封装，页面组件不直接拼接 URL，便于后续替换后端地址和统一错误处理。
 

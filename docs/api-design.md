@@ -73,6 +73,9 @@ JSON 字段使用 snake_case，与 FastAPI/Pydantic 后端保持一致。
 | `/api/schema` | GET | 获取 ScriptDocument JSON Schema | 已实现 |
 | `/api/generate` | POST | 输入章节并生成剧本 YAML | 已实现 |
 | `/api/validate-yaml` | POST | 校验 YAML 是否符合 ScriptDocument Schema | 已实现 |
+| `/api/auth/login` | POST | 登录并写入 HttpOnly Session Cookie | 已实现 |
+| `/api/auth/me` | GET | 查询当前登录状态 | 已实现 |
+| `/api/auth/logout` | POST | 退出登录并清除 Session Cookie | 已实现 |
 
 ## 4. 通用错误格式
 
@@ -120,7 +123,73 @@ JSON 字段使用 snake_case，与 FastAPI/Pydantic 后端保持一致。
 | AI_OUTPUT_PARSE_ERROR | AI 返回内容无法解析 |
 | SCHEMA_VALIDATION_ERROR | AI 输出不符合剧本 Schema |
 | YAML_PARSE_ERROR | YAML 校验失败 |
+| UNAUTHORIZED | 用户名或密码错误 |
 | INTERNAL_ERROR | 服务端内部错误 |
+
+## 4.1 认证接口
+
+当前 MVP 使用 Redis Session + HttpOnly Cookie 实现登录态。前端通过 `withCredentials: true` 携带 Cookie，后端启动时优先连接 Redis；Redis 不可用时回退到内存 SessionStore，便于本地调试。
+
+### POST /api/auth/login
+
+请求体：
+
+```json
+{
+  "username": "admin",
+  "password": "admin123"
+}
+```
+
+成功响应：
+
+```json
+{
+  "authenticated": true,
+  "user": {
+    "username": "admin"
+  }
+}
+```
+
+登录成功后，后端会设置 `novel2script_session` Cookie。Cookie 使用 `HttpOnly` 和 `SameSite=Lax`，前端不能通过 JavaScript 读取 session id。
+
+用户名或密码错误时返回 `401 Unauthorized`。
+
+### GET /api/auth/me
+
+用于页面启动时恢复登录态。
+
+已登录响应：
+
+```json
+{
+  "authenticated": true,
+  "user": {
+    "username": "admin"
+  }
+}
+```
+
+未登录响应：
+
+```json
+{
+  "authenticated": false
+}
+```
+
+### POST /api/auth/logout
+
+退出登录，删除服务端 Session，并清除浏览器 Cookie。
+
+响应：
+
+```json
+{
+  "authenticated": false
+}
+```
 
 ## 5. GET /api/health
 
@@ -416,6 +485,7 @@ POST /api/validate-yaml
 
 ```text
 frontend/src/api/scriptApi.js
+frontend/src/api/authApi.js
 ```
 
 ### 10.1 generateScript
@@ -468,6 +538,31 @@ export async function validateYaml(yamlText) {
 用途：
 
 - 将用户编辑后的 YAML 发给后端进行语法和 Schema 校验。
+
+### 10.4 authApi
+
+```js
+export async function login(username, password) {
+  const response = await authClient.post('/api/auth/login', { username, password });
+  return response.data;
+}
+
+export async function checkAuth() {
+  const response = await authClient.get('/api/auth/me');
+  return response.data;
+}
+
+export async function logout() {
+  const response = await authClient.post('/api/auth/logout');
+  return response.data;
+}
+```
+
+用途：
+
+- 登录界面提交账号密码。
+- 页面启动时检查 Session 是否仍然有效。
+- 用户退出时清除服务端 Session 和浏览器 Cookie。
 
 ## 11. AI 供应商接口边界
 
