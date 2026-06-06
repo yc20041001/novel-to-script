@@ -44,7 +44,11 @@ async def schema() -> dict:
 async def generate(request: GenerateRequest) -> GenerateResponse:
     used_mock = False
     try:
-        script = await generate_script_with_deepseek(request.chapters, settings)
+        script = await generate_script_with_deepseek(
+            request.chapters,
+            settings,
+            request.options,
+        )
     except DeepSeekError:
         used_mock = True
         script = build_mock_script([chapter.title for chapter in request.chapters])
@@ -56,4 +60,3 @@ async def generate(request: GenerateRequest) -> GenerateResponse:
 async def validate_yaml_endpoint(request: ValidateYamlRequest) -> ValidateYamlResponse:
     valid, errors = validate_yaml(request.yaml)
     return ValidateYamlResponse(valid=valid, errors=errors)
-

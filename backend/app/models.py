@@ -8,8 +8,16 @@ class NovelChapter(BaseModel):
     content: str = Field(..., min_length=1, description="小说章节正文")
 
 
+class GenerateOptions(BaseModel):
+    genre: str | None = Field(default=None, description="剧本类型，例如 悬疑、爱情、奇幻、剧情")
+    style: str | None = Field(default=None, description="改编风格，例如 短剧、影视剧、广播剧、舞台剧")
+    target_scene_count: int | None = Field(default=None, ge=1, le=50, description="目标场景数量")
+    language: str | None = Field(default="zh-CN", description="语言，默认 zh-CN")
+
+
 class GenerateRequest(BaseModel):
     chapters: list[NovelChapter] = Field(..., min_length=3, description="至少 3 个小说章节")
+    options: GenerateOptions | None = Field(default=None, description="可选生成参数")
 
     @field_validator("chapters")
     @classmethod
@@ -87,4 +95,3 @@ class ValidateYamlRequest(BaseModel):
 class ValidateYamlResponse(BaseModel):
     valid: bool = Field(..., description="YAML 是否符合 Schema")
     errors: list[str] = Field(default_factory=list, description="校验错误详情")
-

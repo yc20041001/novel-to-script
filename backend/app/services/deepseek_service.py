@@ -4,7 +4,7 @@ import re
 import httpx
 
 from app.config import Settings
-from app.models import NovelChapter, ScriptDocument
+from app.models import GenerateOptions, NovelChapter, ScriptDocument
 from app.prompts.script_prompt import SYSTEM_PROMPT, build_script_prompt
 
 
@@ -30,6 +30,7 @@ def extract_json(text: str) -> dict:
 async def generate_script_with_deepseek(
     chapters: list[NovelChapter],
     settings: Settings,
+    options: GenerateOptions | None = None,
 ) -> ScriptDocument:
     if not settings.deepseek_api_key:
         raise DeepSeekError("未配置 DeepSeek API Key")
@@ -38,7 +39,7 @@ async def generate_script_with_deepseek(
         "model": settings.deepseek_model,
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": build_script_prompt(chapters)},
+            {"role": "user", "content": build_script_prompt(chapters, options)},
         ],
         "temperature": 0.4,
         "response_format": {"type": "json_object"},

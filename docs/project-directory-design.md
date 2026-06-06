@@ -62,6 +62,7 @@ novel-to-script/
         │   ├── AppHeader.jsx
         │   ├── ChapterCard.jsx
         │   ├── ChapterList.jsx
+        │   ├── GenerationOptions.jsx
         │   ├── SchemaModal.jsx
         │   ├── YamlWorkspace.jsx
         │   └── ui/
@@ -219,6 +220,7 @@ frontend/
     │   ├── AppHeader.jsx
     │   ├── ChapterCard.jsx
     │   ├── ChapterList.jsx
+    │   ├── GenerationOptions.jsx
     │   ├── SchemaModal.jsx
     │   ├── YamlWorkspace.jsx
     │   └── ui/
@@ -295,6 +297,7 @@ React 应用入口。
 | `AppHeader.jsx` | 顶部标题、章节数和 API 地址 |
 | `ChapterCard.jsx` | 单个章节标题和正文编辑 |
 | `ChapterList.jsx` | 章节列表、添加章节和章节校验提示 |
+| `GenerationOptions.jsx` | 剧本类型、改编风格、目标场景数量和语言设置 |
 | `YamlWorkspace.jsx` | YAML 编辑器、生成、校验、复制、下载和 Schema 按钮 |
 | `SchemaModal.jsx` | JSON Schema 弹窗 |
 | `ui/` | shadcn/ui 风格基础组件 |

@@ -233,7 +233,13 @@ POST /api/generate
       "title": "第三章 旧书店",
       "content": "楼上传来脚步声..."
     }
-  ]
+  ],
+  "options": {
+    "genre": "悬疑",
+    "style": "短剧",
+    "target_scene_count": 6,
+    "language": "zh-CN"
+  }
 }
 ```
 
@@ -244,6 +250,11 @@ POST /api/generate
 | chapters | array | 是 | 至少 3 项 | 小说章节数组 |
 | chapters[].title | string | 是 | 非空 | 章节标题 |
 | chapters[].content | string | 是 | 非空 | 章节正文 |
+| options | object | 否 | 可选 | 剧本生成选项 |
+| options.genre | string | 否 | 可选 | 剧本类型，例如悬疑、爱情、奇幻、剧情 |
+| options.style | string | 否 | 可选 | 改编风格，例如短剧、影视剧、广播剧、舞台剧 |
+| options.target_scene_count | integer | 否 | 1-50 | 目标场景数量 |
+| options.language | string | 否 | 可选 | 输出语言，默认 zh-CN |
 
 ### 7.4 成功响应
 
@@ -303,21 +314,15 @@ POST /api/generate
 
 ### 7.7 兼容性说明
 
-后续可以在请求体中新增可选字段，不影响当前前端：
+`options` 是可选字段。旧请求只传 `chapters` 时仍然兼容：
 
 ```json
 {
-  "chapters": [],
-  "options": {
-    "genre": "悬疑",
-    "style": "短剧",
-    "target_scene_count": 12,
-    "language": "zh-CN"
-  }
+  "chapters": []
 }
 ```
 
-新增字段应为可选字段，避免破坏当前调用方。
+后续如继续扩展生成参数，应优先新增 `options` 内的可选字段，避免破坏当前调用方。
 
 ## 8. POST /api/validate-yaml
 
@@ -416,8 +421,12 @@ frontend/src/api/scriptApi.js
 ### 10.1 generateScript
 
 ```js
-export async function generateScript(chapters) {
-  const response = await client.post('/api/generate', { chapters });
+export async function generateScript(chapters, options) {
+  const payload = { chapters };
+  if (options) {
+    payload.options = options;
+  }
+  const response = await client.post('/api/generate', payload);
   return response.data;
 }
 ```
@@ -431,6 +440,7 @@ frontend/src/App.jsx
 用途：
 
 - 生成剧本 YAML。
+- 可携带剧本类型、改编风格、目标场景数量和语言等生成选项。
 - 接收 `used_mock`，提示是否为演示输出。
 
 ### 10.2 fetchSchema

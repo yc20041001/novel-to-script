@@ -7,8 +7,12 @@ const client = axios.create({
   timeout: 120000,
 });
 
-export async function generateScript(chapters) {
-  const response = await client.post('/api/generate', { chapters });
+export async function generateScript(chapters, options) {
+  const payload = { chapters };
+  if (options) {
+    payload.options = options;
+  }
+  const response = await client.post('/api/generate', payload);
   return response.data;
 }
 

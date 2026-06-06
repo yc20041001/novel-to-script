@@ -3,6 +3,7 @@ import yaml from 'js-yaml';
 import { API_BASE_URL, fetchSchema, generateScript, validateYaml } from './api/scriptApi';
 import AppHeader from './components/AppHeader';
 import ChapterList from './components/ChapterList';
+import GenerationOptions from './components/GenerationOptions';
 import YamlWorkspace from './components/YamlWorkspace';
 import SchemaModal from './components/SchemaModal';
 import { useToast } from './components/ui/toast';
@@ -40,9 +41,17 @@ scenes: []
 notes: []
 `;
 
+const defaultOptions = {
+  genre: '悬疑',
+  style: '短剧',
+  target_scene_count: 6,
+  language: 'zh-CN',
+};
+
 function App() {
   const toast = useToast();
   const [chapters, setChapters] = useState(initialChapters);
+  const [generationOptions, setGenerationOptions] = useState(defaultOptions);
   const [yamlText, setYamlText] = useState(emptyYaml);
   const [loading, setLoading] = useState(false);
   const [yamlChecking, setYamlChecking] = useState(false);
@@ -93,7 +102,7 @@ function App() {
 
     setLoading(true);
     try {
-      const result = await generateScript(chapters);
+      const result = await generateScript(chapters, generationOptions);
       setYamlText(result.yaml);
       setUsedMock(result.used_mock);
       if (result.used_mock) {
@@ -171,13 +180,20 @@ function App() {
       />
 
       <main className="workspace">
-        <ChapterList
-          chapters={chapters}
-          onUpdateChapter={updateChapter}
-          onAddChapter={addChapter}
-          onRemoveChapter={removeChapter}
-          validation={validation}
-        />
+        <div className="flex flex-col gap-[18px]">
+          <ChapterList
+            chapters={chapters}
+            onUpdateChapter={updateChapter}
+            onAddChapter={addChapter}
+            onRemoveChapter={removeChapter}
+            validation={validation}
+          />
+
+          <GenerationOptions
+            options={generationOptions}
+            onChange={setGenerationOptions}
+          />
+        </div>
 
         <YamlWorkspace
           yamlText={yamlText}
