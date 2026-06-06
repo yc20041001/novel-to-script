@@ -18,7 +18,7 @@ function AppHeader({ chapterCount, validation, apiBaseUrl, user, onLogout }) {
         <Badge variant={validation ? 'warning' : 'success'}>{chapterCount} 个章节</Badge>
         <Badge variant="secondary" className="gap-1.5">
           <Server className="h-3.5 w-3.5" />
-          {apiBaseUrl}
+          API {apiBaseUrl.replace(/^https?:\/\//, '')}
         </Badge>
         {user && (
           <>

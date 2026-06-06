@@ -40,10 +40,18 @@ function GenerationOptions({ options, onChange }) {
   return (
     <div className="options-panel">
       <div className="mb-3 flex items-center gap-2">
-        <div className="grid h-8 w-8 place-items-center rounded-lg bg-amber-100 text-amber-800">
+        <div className="panel-icon panel-icon-amber">
           <SlidersHorizontal className="h-4 w-4" />
         </div>
-        <h3 className="text-sm font-semibold text-foreground">生成选项</h3>
+        <div>
+          <h3 className="text-sm font-semibold text-foreground">生成选项</h3>
+          <p className="text-xs text-muted-foreground">控制改编方向和输出颗粒度</p>
+        </div>
+      </div>
+      <div className="option-summary">
+        <span>{options.genre || '未设置类型'}</span>
+        <span>{options.style || '未设置风格'}</span>
+        <span>{options.target_scene_count || 0} 场</span>
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <OptionField label="剧本类型" id="option-genre">
