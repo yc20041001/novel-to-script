@@ -15,7 +15,7 @@ function ChapterCard({ chapter, index, onUpdate, onRemove, disableRemove }) {
             value={chapter.title}
             onChange={(event) => onUpdate(index, 'title', event.target.value)}
             placeholder="章节标题"
-            className="border-0 bg-transparent px-0 text-sm font-semibold shadow-none focus-visible:ring-0"
+            className="chapter-title-input"
           />
         </div>
         <Tooltip>
@@ -33,7 +33,7 @@ function ChapterCard({ chapter, index, onUpdate, onRemove, disableRemove }) {
           value={chapter.content}
           onChange={(event) => onUpdate(index, 'content', event.target.value)}
           placeholder="粘贴该章节正文"
-          className="max-h-56 min-h-32 resize-y"
+          className="chapter-textarea"
         />
         <p className="mt-1 text-right text-xs text-muted-foreground">{chapter.content.length} 字符</p>
       </CardContent>

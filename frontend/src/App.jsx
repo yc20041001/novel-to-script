@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, Loader2, Sparkles } from 'lucide-react';
 import yaml from 'js-yaml';
 import { API_BASE_URL, fetchSchema, generateScript, validateYaml } from './api/scriptApi';
 import { checkAuth, logout as apiLogout } from './api/authApi';
@@ -9,6 +9,7 @@ import GenerationOptions from './components/GenerationOptions';
 import LoginPage from './components/LoginPage';
 import YamlWorkspace from './components/YamlWorkspace';
 import SchemaModal from './components/SchemaModal';
+import { Button } from './components/ui/button';
 import { useToast } from './components/ui/toast';
 
 const initialChapters = [
@@ -51,6 +52,13 @@ const defaultOptions = {
   language: 'zh-CN',
 };
 
+const workflowSteps = [
+  { id: 'chapters', title: '章节输入', description: '整理小说原文' },
+  { id: 'options', title: '生成选项', description: '设置改编方向' },
+  { id: 'generate', title: '确认生成', description: '提交 AI 转换' },
+  { id: 'result', title: '完成内容', description: '查看和导出' },
+];
+
 function App() {
   const toast = useToast();
   const [authLoading, setAuthLoading] = useState(true);
@@ -63,6 +71,7 @@ function App() {
   const [schemaOpen, setSchemaOpen] = useState(false);
   const [schemaText, setSchemaText] = useState('');
   const [usedMock, setUsedMock] = useState(false);
+  const [currentStep, setCurrentStep] = useState('chapters');
 
   useEffect(() => {
     checkAuth()
@@ -124,7 +133,7 @@ function App() {
   const handleGenerate = async () => {
     if (validation) {
       toast.warning(validation);
-      return;
+      return false;
     }
 
     setLoading(true);
@@ -137,11 +146,28 @@ function App() {
       } else {
         toast.success('剧本 YAML 已生成。');
       }
+      return true;
     } catch (error) {
       toast.error(error?.response?.data?.detail || '生成失败，请检查后端服务。');
+      return false;
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleGenerateAndShowResult = async () => {
+    const generated = await handleGenerate();
+    if (generated) {
+      setCurrentStep('result');
+    }
+  };
+
+  const goToOptions = () => {
+    if (validation) {
+      toast.warning(validation);
+      return;
+    }
+    setCurrentStep('options');
   };
 
   const handleCopy = async () => {
@@ -210,6 +236,9 @@ function App() {
     return <LoginPage onLoginSuccess={(u) => setUser(u)} />;
   }
 
+  const currentStepIndex = workflowSteps.findIndex((step) => step.id === currentStep);
+  const totalCharacters = chapters.reduce((sum, chapter) => sum + chapter.content.length, 0);
+
   return (
     <div className="app-shell">
       <AppHeader
@@ -220,8 +249,36 @@ function App() {
         onLogout={handleLogout}
       />
 
-      <main className="workspace">
-        <div className="side-stack flex flex-col gap-5">
+      <main className="workflow-shell">
+        <section className="workflow-hero">
+          <div>
+            <p className="workflow-kicker">Script workflow</p>
+            <h2>{workflowSteps[currentStepIndex]?.title}</h2>
+            <p>{workflowSteps[currentStepIndex]?.description}</p>
+          </div>
+          <div className="workflow-progress" aria-label="生成流程">
+            {workflowSteps.map((step, index) => (
+              <button
+                key={step.id}
+                type="button"
+                className={`workflow-step ${
+                  index === currentStepIndex ? 'workflow-step-active' : ''
+                } ${index < currentStepIndex ? 'workflow-step-done' : ''}`}
+                onClick={() => {
+                  if (index <= currentStepIndex || currentStep === 'result') {
+                    setCurrentStep(step.id);
+                  }
+                }}
+              >
+                <span>{index < currentStepIndex ? <CheckCircle2 className="h-4 w-4" /> : index + 1}</span>
+                <strong>{step.title}</strong>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {currentStep === 'chapters' && (
+          <section className="workflow-stage workflow-stage-wide">
           <ChapterList
             chapters={chapters}
             onUpdateChapter={updateChapter}
@@ -229,25 +286,106 @@ function App() {
             onRemoveChapter={removeChapter}
             validation={validation}
           />
+            <div className="workflow-actions">
+              <Button onClick={goToOptions} disabled={Boolean(validation)}>
+                下一步
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </section>
+        )}
 
-          <GenerationOptions
-            options={generationOptions}
-            onChange={setGenerationOptions}
-          />
-        </div>
+        {currentStep === 'options' && (
+          <section className="workflow-stage">
+            <GenerationOptions options={generationOptions} onChange={setGenerationOptions} />
+            <div className="workflow-summary-card">
+              <h3>输入概览</h3>
+              <div>
+                <span>{chapters.length} 个章节</span>
+                <span>{totalCharacters} 字符</span>
+                <span>{generationOptions.target_scene_count || 0} 个目标场景</span>
+              </div>
+            </div>
+            <div className="workflow-actions">
+              <Button variant="outline" onClick={() => setCurrentStep('chapters')}>
+                <ArrowLeft className="h-4 w-4" />
+                返回章节
+              </Button>
+              <Button onClick={() => setCurrentStep('generate')}>
+                下一步
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </section>
+        )}
 
-        <YamlWorkspace
-          yamlText={yamlText}
-          onYamlChange={setYamlText}
-          loading={loading}
-          yamlChecking={yamlChecking}
-          usedMock={usedMock}
-          onGenerate={handleGenerate}
-          onCopy={handleCopy}
-          onDownload={handleDownload}
-          onFormatCheck={handleFormatCheck}
-          onSchema={handleSchema}
-        />
+        {currentStep === 'generate' && (
+          <section className="workflow-stage">
+            <div className="generate-review">
+              <div>
+                <p className="workflow-kicker">Ready to generate</p>
+                <h3>确认生成结构化剧本</h3>
+                <p>系统将按当前章节和参数生成 YAML，可在完成页继续编辑、校验、复制或下载。</p>
+              </div>
+              <div className="review-grid">
+                <div>
+                  <span>章节</span>
+                  <strong>{chapters.length}</strong>
+                </div>
+                <div>
+                  <span>类型</span>
+                  <strong>{generationOptions.genre || '未设置'}</strong>
+                </div>
+                <div>
+                  <span>风格</span>
+                  <strong>{generationOptions.style || '未设置'}</strong>
+                </div>
+                <div>
+                  <span>场景</span>
+                  <strong>{generationOptions.target_scene_count || 0}</strong>
+                </div>
+              </div>
+            </div>
+            <div className="workflow-actions">
+              <Button variant="outline" onClick={() => setCurrentStep('options')}>
+                <ArrowLeft className="h-4 w-4" />
+                返回选项
+              </Button>
+              <Button loading={loading} onClick={handleGenerateAndShowResult}>
+                <Sparkles className="h-4 w-4" />
+                生成并查看结果
+              </Button>
+            </div>
+          </section>
+        )}
+
+        {currentStep === 'result' && (
+          <section className="workflow-stage workflow-stage-result">
+            <YamlWorkspace
+              yamlText={yamlText}
+              onYamlChange={setYamlText}
+              loading={loading}
+              yamlChecking={yamlChecking}
+              usedMock={usedMock}
+              onGenerate={handleGenerate}
+              onCopy={handleCopy}
+              onDownload={handleDownload}
+              onFormatCheck={handleFormatCheck}
+              onSchema={handleSchema}
+              showGenerate={false}
+            />
+            <div className="workflow-actions">
+              <Button variant="outline" onClick={() => setCurrentStep('generate')}>
+                <ArrowLeft className="h-4 w-4" />
+                返回生成
+              </Button>
+              <Button loading={loading} onClick={handleGenerateAndShowResult}>
+                <Sparkles className="h-4 w-4" />
+                重新生成
+              </Button>
+            </div>
+          </section>
+        )}
       </main>
 
       <SchemaModal

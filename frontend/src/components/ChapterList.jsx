@@ -6,11 +6,13 @@ import { Button } from './ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 
 function ChapterList({ chapters, onUpdateChapter, onAddChapter, onRemoveChapter, validation }) {
+  const totalCharacters = chapters.reduce((sum, chapter) => sum + chapter.content.length, 0);
+
   return (
     <section className="panel input-panel">
       <div className="panel-heading">
         <div className="flex items-start gap-3">
-          <div className="grid h-9 w-9 place-items-center rounded-lg bg-teal-50 text-teal-700">
+          <div className="panel-icon panel-icon-teal">
             <Layers3 className="h-4 w-4" />
           </div>
           <div>
@@ -27,6 +29,12 @@ function ChapterList({ chapters, onUpdateChapter, onAddChapter, onRemoveChapter,
           </TooltipTrigger>
           <TooltipContent>添加章节</TooltipContent>
         </Tooltip>
+      </div>
+
+      <div className="input-metrics">
+        <span>{chapters.length} 个章节</span>
+        <span>{totalCharacters} 字符</span>
+        <span>{validation ? '待补全' : '可生成'}</span>
       </div>
 
       {validation && <Alert variant="warning">{validation}</Alert>}
