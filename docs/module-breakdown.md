@@ -119,6 +119,7 @@ frontend/src/App.jsx
 
 ```text
 frontend/src/api/scriptApi.js
+frontend/src/api/authApi.js
 ```
 
 职责：
@@ -126,6 +127,8 @@ frontend/src/api/scriptApi.js
 - 统一配置后端 API 地址。
 - 封装 `/api/generate` 请求。
 - 封装 `/api/schema` 请求。
+- 封装 `/api/validate-yaml` 请求。
+- 封装登录、当前用户查询和退出登录请求。
 
 主要函数：
 
@@ -133,6 +136,10 @@ frontend/src/api/scriptApi.js
 | --- | --- |
 | generateScript(chapters) | 提交章节并获取剧本 YAML |
 | fetchSchema() | 获取后端导出的 JSON Schema |
+| validateYaml(yamlText) | 校验 YAML 语法和 ScriptDocument Schema |
+| login(username, password) | 登录并写入 HttpOnly Cookie |
+| checkAuth() | 检查当前 Session 是否有效 |
+| logout() | 清除服务端 Session 和浏览器 Cookie |
 
 输入：章节数据或无参数。  
 输出：后端 JSON 响应。
@@ -202,6 +209,26 @@ backend/app/main.py
 | /api/health | GET | 服务健康检查 |
 | /api/schema | GET | 导出 ScriptDocument JSON Schema |
 | /api/generate | POST | 根据章节生成剧本 YAML |
+| /api/validate-yaml | POST | 校验 YAML 是否符合 ScriptDocument Schema |
+| /api/auth/login | POST | 登录并创建 Session |
+| /api/auth/me | GET | 查询当前登录状态 |
+| /api/auth/logout | POST | 退出登录并删除 Session |
+
+### 4.1.1 认证与 Session 模块
+
+路径：
+
+```text
+backend/app/auth.py
+backend/app/session_store.py
+```
+
+职责：
+
+- 提供登录、当前用户查询和退出登录接口。
+- 使用 HttpOnly Cookie 保存 session id。
+- 使用 Redis 保存 Session 数据。
+- Redis 不可用时回退到内存存储，保证本地演示可用。
 
 ### 4.2 配置管理模块
 
@@ -493,8 +520,9 @@ backend/app/services/
 | 模块 | 验收标准 |
 | --- | --- |
 | 章节输入模块 | 能输入、添加、删除章节，且不少于 3 章 |
-| API 请求模块 | 能正确请求 `/api/generate` 和 `/api/schema` |
-| FastAPI 接口模块 | `/api/health`、`/api/schema`、`/api/generate` 可用 |
+| 登录模块 | 能登录、刷新保持登录态、退出后清除 Session |
+| API 请求模块 | 能正确请求 `/api/generate`、`/api/schema`、`/api/validate-yaml` 和认证接口 |
+| FastAPI 接口模块 | `/api/health`、`/api/schema`、`/api/generate`、`/api/validate-yaml` 和认证接口可用 |
 | DeepSeek 调用模块 | 配置 API Key 后能调用模型并返回结构化结果 |
 | Schema 校验模块 | AI 结果必须通过 Pydantic 校验 |
 | YAML 转换模块 | 输出合法 YAML，中文正常显示 |

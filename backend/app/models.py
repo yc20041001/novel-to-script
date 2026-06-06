@@ -95,3 +95,8 @@ class ValidateYamlRequest(BaseModel):
 class ValidateYamlResponse(BaseModel):
     valid: bool = Field(..., description="YAML 是否符合 Schema")
     errors: list[str] = Field(default_factory=list, description="校验错误详情")
+
+
+class LoginRequest(BaseModel):
+    username: str = Field(..., description="用户名")
+    password: str = Field(..., description="密码")

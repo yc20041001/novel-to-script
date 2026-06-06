@@ -1,9 +1,12 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { Loader2 } from 'lucide-react';
 import yaml from 'js-yaml';
 import { API_BASE_URL, fetchSchema, generateScript, validateYaml } from './api/scriptApi';
+import { checkAuth, logout as apiLogout } from './api/authApi';
 import AppHeader from './components/AppHeader';
 import ChapterList from './components/ChapterList';
 import GenerationOptions from './components/GenerationOptions';
+import LoginPage from './components/LoginPage';
 import YamlWorkspace from './components/YamlWorkspace';
 import SchemaModal from './components/SchemaModal';
 import { useToast } from './components/ui/toast';
@@ -50,6 +53,8 @@ const defaultOptions = {
 
 function App() {
   const toast = useToast();
+  const [authLoading, setAuthLoading] = useState(true);
+  const [user, setUser] = useState(null);
   const [chapters, setChapters] = useState(initialChapters);
   const [generationOptions, setGenerationOptions] = useState(defaultOptions);
   const [yamlText, setYamlText] = useState(emptyYaml);
@@ -58,6 +63,28 @@ function App() {
   const [schemaOpen, setSchemaOpen] = useState(false);
   const [schemaText, setSchemaText] = useState('');
   const [usedMock, setUsedMock] = useState(false);
+
+  useEffect(() => {
+    checkAuth()
+      .then((data) => {
+        if (data.authenticated) {
+          setUser(data.user);
+        }
+      })
+      .catch(() => {
+        // 后端不可用时保持未登录
+      })
+      .finally(() => setAuthLoading(false));
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await apiLogout();
+    } catch {
+      // 即使后端调用失败也清除前端状态
+    }
+    setUser(null);
+  };
 
   const validation = useMemo(() => {
     if (chapters.length < 3) {
@@ -171,12 +198,26 @@ function App() {
     }
   };
 
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LoginPage onLoginSuccess={(u) => setUser(u)} />;
+  }
+
   return (
     <div className="app-shell">
       <AppHeader
         chapterCount={chapters.length}
         validation={validation}
         apiBaseUrl={API_BASE_URL}
+        user={user}
+        onLogout={handleLogout}
       />
 
       <main className="workspace">
