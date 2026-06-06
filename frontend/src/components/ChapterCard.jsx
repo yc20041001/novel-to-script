@@ -7,14 +7,17 @@ import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 
 function ChapterCard({ chapter, index, onUpdate, onRemove, disableRemove }) {
   return (
-    <Card>
+    <Card className="chapter-card">
       <CardHeader>
-        <Input
-          value={chapter.title}
-          onChange={(event) => onUpdate(index, 'title', event.target.value)}
-          placeholder="章节标题"
-          className="border-0 px-0 text-sm font-medium shadow-none focus-visible:ring-0"
-        />
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <span className="chapter-index">{index + 1}</span>
+          <Input
+            value={chapter.title}
+            onChange={(event) => onUpdate(index, 'title', event.target.value)}
+            placeholder="章节标题"
+            className="border-0 bg-transparent px-0 text-sm font-semibold shadow-none focus-visible:ring-0"
+          />
+        </div>
         <Tooltip>
           <TooltipTrigger asChild>
             <Button variant="ghost" size="icon" disabled={disableRemove} onClick={() => onRemove(index)}>

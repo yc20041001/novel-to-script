@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-react';
+import { Layers3, Plus } from 'lucide-react';
 import { motion } from 'motion/react';
 import ChapterCard from './ChapterCard';
 import { Alert } from './ui/alert';
@@ -9,9 +9,14 @@ function ChapterList({ chapters, onUpdateChapter, onAddChapter, onRemoveChapter,
   return (
     <section className="panel input-panel">
       <div className="panel-heading">
-        <div>
-          <h2 className="panel-title">小说章节</h2>
-          <p className="panel-description">输入至少 3 章，系统会拆分人物、地点、场景和节拍。</p>
+        <div className="flex items-start gap-3">
+          <div className="grid h-9 w-9 place-items-center rounded-lg bg-teal-50 text-teal-700">
+            <Layers3 className="h-4 w-4" />
+          </div>
+          <div>
+            <h2 className="panel-title">小说章节</h2>
+            <p className="panel-description">输入至少 3 章，系统会拆分人物、地点、场景和节拍。</p>
+          </div>
         </div>
         <Tooltip>
           <TooltipTrigger asChild>
