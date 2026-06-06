@@ -10,7 +10,8 @@ class Settings(BaseSettings):
     frontend_origin: str = "http://localhost:5173"
 
     # Redis & Session
-    redis_url: str = "redis://localhost:6379/0"
+    redis_url: str = "redis://127.0.0.1:6379/0"
+    redis_password: str = ""
     session_cookie_name: str = "novel2script_session"
     session_ttl_seconds: int = 86400
     demo_username: str = "admin"
@@ -22,4 +23,3 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
-
