@@ -12,6 +12,7 @@ import YamlWorkspace from './components/YamlWorkspace';
 import SchemaModal from './components/SchemaModal';
 import { Button } from './components/ui/button';
 import { useToast } from './components/ui/toast';
+import { getApiErrorMessage } from './lib/apiError';
 
 const initialChapters = [
   {
@@ -154,7 +155,7 @@ function App() {
       }
       return true;
     } catch (error) {
-      toast.error(error?.response?.data?.detail || '生成失败，请检查后端服务。');
+      toast.error(getApiErrorMessage(error, '生成失败，请检查后端服务。'));
       return false;
     } finally {
       setLoading(false);
