@@ -8,8 +8,29 @@ const authClient = axios.create({
   timeout: 10000,
 });
 
-export async function login(username, password) {
-  const response = await authClient.post('/api/auth/login', { username, password });
+export async function getCaptcha() {
+  const response = await authClient.get('/api/auth/captcha');
+  return response.data;
+}
+
+export async function login(username, password, captchaId, captchaCode) {
+  const response = await authClient.post('/api/auth/login', {
+    username,
+    password,
+    captcha_id: captchaId,
+    captcha_code: captchaCode,
+  });
+  return response.data;
+}
+
+export async function register(username, password, displayName, captchaId, captchaCode) {
+  const response = await authClient.post('/api/auth/register', {
+    username,
+    password,
+    display_name: displayName || undefined,
+    captcha_id: captchaId,
+    captcha_code: captchaCode,
+  });
   return response.data;
 }
 

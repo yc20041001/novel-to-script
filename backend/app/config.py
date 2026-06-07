@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     redis_password: str = ""
     session_cookie_name: str = "novel2script_session"
     session_ttl_seconds: int = 86400
+    captcha_ttl_seconds: int = 60
     generation_cache_ttl_seconds: int = 604800
 
     # MySQL persistence

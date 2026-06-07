@@ -42,6 +42,22 @@ async def init_session_store(app: FastAPI) -> None:
         app.state.session_store = InMemorySessionStore()
 
 
+async def init_captcha_store(app: FastAPI) -> None:
+    from app.captcha_store import InMemoryCaptchaStore, RedisCaptchaStore
+
+    try:
+        store = RedisCaptchaStore(
+            settings.redis_url,
+            password=settings.redis_password or None,
+        )
+        await store.ping()
+        app.state.captcha_store = store
+        print("✓ Redis captcha store connected")
+    except Exception as exc:
+        print(f"⚠ Redis 验证码存储不可用，使用内存验证码：{exc.__class__.__name__}")
+        app.state.captcha_store = InMemoryCaptchaStore()
+
+
 async def init_generation_cache(app: FastAPI) -> None:
     try:
         cache = RedisGenerationCache(
@@ -83,6 +99,7 @@ async def init_user_repository(app: FastAPI) -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_session_store(app)
+    await init_captcha_store(app)
     await init_generation_cache(app)
     await init_generation_repository(app)
     await init_user_repository(app)

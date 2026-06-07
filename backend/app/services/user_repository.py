@@ -38,6 +38,14 @@ class UserRepository(abc.ABC):
     @abc.abstractmethod
     async def verify_user(self, username: str, password: str) -> dict[str, Any] | None: ...
 
+    @abc.abstractmethod
+    async def create_user(
+        self,
+        username: str,
+        password: str,
+        display_name: str | None = None,
+    ) -> dict[str, Any]: ...
+
 
 class InMemoryUserRepository(UserRepository):
     def __init__(self, settings: Settings) -> None:
@@ -58,6 +66,24 @@ class InMemoryUserRepository(UserRepository):
         user = self._users.get(username)
         if user is None or not verify_password(password, user["password_hash"]):
             return None
+        return {k: v for k, v in user.items() if k != "password_hash"}
+
+    async def create_user(
+        self,
+        username: str,
+        password: str,
+        display_name: str | None = None,
+    ) -> dict[str, Any]:
+        if username in self._users:
+            raise ValueError("用户名已存在")
+        user = {
+            "id": len(self._users) + 1,
+            "username": username,
+            "password_hash": hash_password(password),
+            "display_name": display_name or username,
+            "role": "author",
+        }
+        self._users[username] = user
         return {k: v for k, v in user.items() if k != "password_hash"}
 
 
@@ -147,5 +173,47 @@ class MySQLUserRepository(UserRepository):
                 if user is None or not verify_password(password, user["password_hash"]):
                     return None
                 return {k: v for k, v in user.items() if k != "password_hash"}
+        finally:
+            conn.close()
+
+    async def create_user(
+        self,
+        username: str,
+        password: str,
+        display_name: str | None = None,
+    ) -> dict[str, Any]:
+        return await asyncio.to_thread(self._create_user_sync, username, password, display_name)
+
+    def _create_user_sync(
+        self,
+        username: str,
+        password: str,
+        display_name: str | None = None,
+    ) -> dict[str, Any]:
+        conn = self._connect()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("SELECT id FROM users WHERE username = %s", (username,))
+                if cursor.fetchone() is not None:
+                    raise ValueError("用户名已存在")
+
+                cursor.execute(
+                    """
+                    INSERT INTO users (username, password_hash, display_name, role)
+                    VALUES (%s, %s, %s, %s)
+                    """,
+                    (username, hash_password(password), display_name or username, "author"),
+                )
+                user_id = cursor.lastrowid
+            conn.commit()
+            return {
+                "id": user_id,
+                "username": username,
+                "display_name": display_name or username,
+                "role": "author",
+            }
+        except Exception:
+            conn.rollback()
+            raise
         finally:
             conn.close()
