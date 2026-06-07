@@ -655,6 +655,27 @@
   .admin-loading {
     @apply flex min-h-[360px] items-center justify-center gap-3 rounded-lg border bg-white/80 text-muted-foreground;
   }
+
+  .app-error-shell {
+    @apply flex min-h-screen items-center justify-center p-6;
+  }
+
+  .app-error-card {
+    @apply flex w-full max-w-lg flex-col gap-4 rounded-lg border bg-white p-6 shadow-xl;
+    border-color: rgba(217, 119, 6, 0.22);
+  }
+
+  .app-error-card h1 {
+    @apply text-xl font-semibold text-foreground;
+  }
+
+  .app-error-card p {
+    @apply mt-1 text-sm text-muted-foreground;
+  }
+
+  .app-error-card code {
+    @apply mt-3 block rounded bg-amber-50 px-3 py-2 text-xs text-amber-900;
+  }
 }
 
 @media (max-width: 980px) {
