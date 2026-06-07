@@ -128,7 +128,11 @@ JSON 字段使用 snake_case，与 FastAPI/Pydantic 后端保持一致。
 
 ## 4.1 认证接口
 
-当前 MVP 使用 Redis Session + HttpOnly Cookie 实现登录态。前端通过 `withCredentials: true` 携带 Cookie，后端启动时优先连接 Redis；Redis 不可用时回退到内存 SessionStore，便于本地调试。
+当前 MVP 使用 MySQL 用户表 + Redis Session + HttpOnly Cookie 实现登录态。前端通过 `withCredentials: true` 携带 Cookie。
+
+- 用户账号保存在 MySQL `users` 表。
+- 后端启动时会根据 `.env` 的 `DEMO_USERNAME` / `DEMO_PASSWORD` 自动创建默认演示用户。
+- Session ID 保存在 Redis；Redis 不可用时回退到内存 SessionStore，便于本地调试。
 
 ### POST /api/auth/login
 
@@ -153,6 +157,8 @@ JSON 字段使用 snake_case，与 FastAPI/Pydantic 后端保持一致。
 ```
 
 登录成功后，后端会设置 `novel2script_session` Cookie。Cookie 使用 `HttpOnly` 和 `SameSite=Lax`，前端不能通过 JavaScript 读取 session id。
+
+密码不会明文入库，MySQL 中只保存 PBKDF2 哈希。
 
 用户名或密码错误时返回 `401 Unauthorized`。
 
