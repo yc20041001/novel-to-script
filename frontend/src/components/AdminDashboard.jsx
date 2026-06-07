@@ -16,6 +16,7 @@ import {
 } from '../api/adminApi';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
+import { getApiErrorMessage } from '../lib/apiError';
 
 const statItems = [
   { key: 'user_count', label: '用户总数', icon: UsersRound },
@@ -45,7 +46,7 @@ function AdminDashboard({ toast }) {
       setUsers(usersData.users || []);
       setRecords(generationsData.records || []);
     } catch (error) {
-      toast.error(error?.response?.data?.detail || '管理后台数据加载失败');
+      toast.error(getApiErrorMessage(error, '管理后台数据加载失败'));
     } finally {
       setLoading(false);
     }
@@ -70,7 +71,7 @@ function AdminDashboard({ toast }) {
       setUsers((current) => current.map((item) => (item.id === updated.id ? updated : item)));
       toast.success('用户状态已更新');
     } catch (error) {
-      toast.error(error?.response?.data?.detail || '用户更新失败');
+      toast.error(getApiErrorMessage(error, '用户更新失败'));
     } finally {
       setSavingUserId(null);
     }

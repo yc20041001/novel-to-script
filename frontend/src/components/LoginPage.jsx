@@ -4,6 +4,7 @@ import { BookOpenText, KeyRound, LogIn, RefreshCw, ShieldCheck, UserPlus, UserRo
 import { getCaptcha, login, register } from '../api/authApi';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
+import { getApiErrorMessage } from '../lib/apiError';
 
 function LoginPage({ onLoginSuccess }) {
   const [mode, setMode] = useState('login');
@@ -66,13 +67,10 @@ function LoginPage({ onLoginSuccess }) {
         onLoginSuccess(result.user);
       }
     } catch (err) {
-      const detail = err?.response?.data?.detail;
-      if (detail) {
-        setError(detail);
-      } else if (err.code === 'ERR_NETWORK') {
+      if (err.code === 'ERR_NETWORK') {
         setError('无法连接到后端服务，请确认 FastAPI 已启动');
       } else {
-        setError(mode === 'login' ? '登录失败，请重试' : '注册失败，请重试');
+        setError(getApiErrorMessage(err, mode === 'login' ? '登录失败，请重试' : '注册失败，请重试'));
       }
       loadCaptcha();
     } finally {
