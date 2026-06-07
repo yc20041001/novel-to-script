@@ -34,3 +34,17 @@ def test_in_memory_user_repository_creates_user() -> None:
     verified = asyncio.run(repository.verify_user("writer", "secret123"))
     assert verified is not None
     assert verified["username"] == "writer"
+
+
+def test_in_memory_user_repository_updates_status() -> None:
+    settings = get_settings()
+    repository = InMemoryUserRepository(settings)
+    asyncio.run(repository.init())
+    created = asyncio.run(repository.create_user("blocked", "secret123"))
+
+    updated = asyncio.run(repository.update_user(created["id"], status="disabled"))
+    assert updated is not None
+    assert updated["status"] == "disabled"
+
+    verified = asyncio.run(repository.verify_user("blocked", "secret123"))
+    assert verified is None

@@ -21,6 +21,12 @@ class GenerationRepository(abc.ABC):
         response_payload: dict[str, Any],
     ) -> None: ...
 
+    @abc.abstractmethod
+    async def admin_stats(self) -> dict[str, Any]: ...
+
+    @abc.abstractmethod
+    async def list_generation_records(self, limit: int = 50) -> list[dict[str, Any]]: ...
+
 
 class NoopGenerationRepository(GenerationRepository):
     async def init(self) -> None:
@@ -36,6 +42,18 @@ class NoopGenerationRepository(GenerationRepository):
         response_payload: dict[str, Any],
     ) -> None:
         return None
+
+    async def admin_stats(self) -> dict[str, Any]:
+        return {
+            "project_count": 0,
+            "generation_count": 0,
+            "script_version_count": 0,
+            "generated_script_count": 0,
+            "mock_generation_count": 0,
+        }
+
+    async def list_generation_records(self, limit: int = 50) -> list[dict[str, Any]]:
+        return []
 
 
 class InMemoryGenerationRepository(GenerationRepository):
@@ -55,6 +73,38 @@ class InMemoryGenerationRepository(GenerationRepository):
         response_payload: dict[str, Any],
     ) -> None:
         self._store[cache_key] = response_payload
+
+    async def admin_stats(self) -> dict[str, Any]:
+        return {
+            "project_count": len(self._store),
+            "generation_count": len(self._store),
+            "script_version_count": len(self._store),
+            "generated_script_count": len(self._store),
+            "mock_generation_count": sum(1 for item in self._store.values() if item.get("used_mock")),
+        }
+
+    async def list_generation_records(self, limit: int = 50) -> list[dict[str, Any]]:
+        records = []
+        for index, (cache_key, payload) in enumerate(self._store.items(), start=1):
+            script = payload.get("script", {})
+            source = script.get("source", {})
+            metadata = script.get("metadata", {})
+            yaml_text = payload.get("yaml", "")
+            records.append(
+                {
+                    "id": index,
+                    "cache_key": cache_key,
+                    "project_id": None,
+                    "project_title": metadata.get("title") or "未命名项目",
+                    "chapter_count": source.get("chapter_count", 0),
+                    "model_name": "memory",
+                    "used_mock": bool(payload.get("used_mock")),
+                    "yaml_line_count": len(yaml_text.splitlines()),
+                    "created_at": None,
+                    "updated_at": None,
+                }
+            )
+        return records[:limit]
 
 
 class MySQLGenerationRepository(GenerationRepository):
@@ -377,3 +427,81 @@ class MySQLGenerationRepository(GenerationRepository):
             ),
         )
         return cursor.lastrowid
+
+    async def admin_stats(self) -> dict[str, Any]:
+        return await asyncio.to_thread(self._admin_stats_sync)
+
+    def _admin_stats_sync(self) -> dict[str, Any]:
+        conn = self._connect()
+        try:
+            with conn.cursor() as cursor:
+                return {
+                    "project_count": self._count_table(cursor, "projects"),
+                    "generation_count": self._count_table(cursor, "generation_jobs"),
+                    "script_version_count": self._count_table(cursor, "script_versions"),
+                    "generated_script_count": self._count_table(cursor, "generated_scripts"),
+                    "mock_generation_count": self._count_where(cursor, "generation_jobs", "used_mock = TRUE"),
+                }
+        finally:
+            conn.close()
+
+    def _count_table(self, cursor, table: str) -> int:
+        cursor.execute(f"SELECT COUNT(*) AS count FROM {table}")
+        return int(cursor.fetchone()["count"])
+
+    def _count_where(self, cursor, table: str, condition: str) -> int:
+        cursor.execute(f"SELECT COUNT(*) AS count FROM {table} WHERE {condition}")
+        return int(cursor.fetchone()["count"])
+
+    async def list_generation_records(self, limit: int = 50) -> list[dict[str, Any]]:
+        return await asyncio.to_thread(self._list_generation_records_sync, limit)
+
+    def _list_generation_records_sync(self, limit: int = 50) -> list[dict[str, Any]]:
+        conn = self._connect()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT
+                        gs.id,
+                        gs.cache_key,
+                        gs.project_id,
+                        p.title AS project_title,
+                        COUNT(c.id) AS chapter_count,
+                        gj.model_name,
+                        gs.used_mock,
+                        gs.yaml_text,
+                        gs.created_at,
+                        gs.updated_at
+                    FROM generated_scripts gs
+                    LEFT JOIN projects p ON p.id = gs.project_id
+                    LEFT JOIN generation_jobs gj ON gj.id = gs.generation_job_id
+                    LEFT JOIN chapters c ON c.project_id = gs.project_id
+                    GROUP BY
+                        gs.id,
+                        gs.cache_key,
+                        gs.project_id,
+                        p.title,
+                        gj.model_name,
+                        gs.used_mock,
+                        gs.yaml_text,
+                        gs.created_at,
+                        gs.updated_at
+                    ORDER BY gs.created_at DESC
+                    LIMIT %s
+                    """,
+                    (limit,),
+                )
+                return [self._serialize_generation_record(row) for row in cursor.fetchall()]
+        finally:
+            conn.close()
+
+    def _serialize_generation_record(self, row: dict[str, Any]) -> dict[str, Any]:
+        yaml_text = row.pop("yaml_text") or ""
+        result = dict(row)
+        result["used_mock"] = bool(result.get("used_mock"))
+        result["yaml_line_count"] = len(yaml_text.splitlines())
+        for field in ("created_at", "updated_at"):
+            if result.get(field) is not None:
+                result[field] = result[field].isoformat(sep=" ")
+        return result

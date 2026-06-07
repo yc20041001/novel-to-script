@@ -119,3 +119,49 @@ class CaptchaResponse(BaseModel):
     captcha_id: str = Field(..., description="验证码 ID")
     image: str = Field(..., description="验证码 SVG Data URL")
     expires_in: int = Field(..., description="验证码有效期，单位秒")
+
+
+class AdminStatsResponse(BaseModel):
+    user_count: int = Field(default=0, description="用户总数")
+    active_user_count: int = Field(default=0, description="启用用户数")
+    project_count: int = Field(default=0, description="项目总数")
+    generation_count: int = Field(default=0, description="生成次数")
+    script_version_count: int = Field(default=0, description="剧本版本数")
+    generated_script_count: int = Field(default=0, description="缓存剧本数")
+    mock_generation_count: int = Field(default=0, description="Mock 生成次数")
+
+
+class AdminUserItem(BaseModel):
+    id: int | None = Field(default=None, description="用户 ID")
+    username: str = Field(..., description="用户名")
+    display_name: str = Field(..., description="显示名称")
+    role: str = Field(..., description="角色")
+    status: str = Field(default="active", description="用户状态")
+    created_at: str | None = Field(default=None, description="创建时间")
+    updated_at: str | None = Field(default=None, description="更新时间")
+
+
+class AdminUsersResponse(BaseModel):
+    users: list[AdminUserItem] = Field(default_factory=list, description="用户列表")
+
+
+class AdminUpdateUserRequest(BaseModel):
+    role: str | None = Field(default=None, description="角色：admin 或 author")
+    status: str | None = Field(default=None, description="状态：active 或 disabled")
+
+
+class AdminGenerationRecord(BaseModel):
+    id: int | None = Field(default=None, description="记录 ID")
+    cache_key: str = Field(..., description="缓存键")
+    project_id: int | None = Field(default=None, description="项目 ID")
+    project_title: str | None = Field(default=None, description="项目标题")
+    chapter_count: int = Field(default=0, description="章节数")
+    model_name: str | None = Field(default=None, description="模型名称")
+    used_mock: bool = Field(default=False, description="是否使用 Mock")
+    yaml_line_count: int = Field(default=0, description="YAML 行数")
+    created_at: str | None = Field(default=None, description="创建时间")
+    updated_at: str | None = Field(default=None, description="更新时间")
+
+
+class AdminGenerationRecordsResponse(BaseModel):
+    records: list[AdminGenerationRecord] = Field(default_factory=list, description="生成记录")

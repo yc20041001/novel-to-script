@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowRight, CheckCircle2, Loader2, Sparkles } from 'lucide-r
 import yaml from 'js-yaml';
 import { API_BASE_URL, fetchSchema, generateScript, validateYaml } from './api/scriptApi';
 import { checkAuth, logout as apiLogout } from './api/authApi';
+import AdminDashboard from './components/AdminDashboard';
 import AppHeader from './components/AppHeader';
 import ChapterList from './components/ChapterList';
 import GenerationOptions from './components/GenerationOptions';
@@ -72,6 +73,7 @@ function App() {
   const [schemaText, setSchemaText] = useState('');
   const [usedMock, setUsedMock] = useState(false);
   const [currentStep, setCurrentStep] = useState('chapters');
+  const [currentView, setCurrentView] = useState('workspace');
 
   useEffect(() => {
     checkAuth()
@@ -93,6 +95,7 @@ function App() {
       // 即使后端调用失败也清除前端状态
     }
     setUser(null);
+    setCurrentView('workspace');
   };
 
   const validation = useMemo(() => {
@@ -260,9 +263,14 @@ function App() {
         validation={validation}
         apiBaseUrl={API_BASE_URL}
         user={user}
+        currentView={currentView}
+        onViewChange={setCurrentView}
         onLogout={handleLogout}
       />
 
+      {currentView === 'admin' && user.role === 'admin' ? (
+        <AdminDashboard toast={toast} />
+      ) : (
       <main className="workflow-shell">
         <section className="workflow-hero">
           <div>
@@ -403,6 +411,7 @@ function App() {
           </section>
         )}
       </main>
+      )}
 
       <SchemaModal
         open={schemaOpen}

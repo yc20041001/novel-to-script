@@ -521,6 +521,140 @@
   .login-form-panel {
     @apply flex min-h-[520px] flex-col justify-center p-8;
   }
+
+  .admin-shell {
+    @apply mx-auto flex min-h-[calc(100vh-76px)] w-full max-w-7xl flex-col gap-5 p-6;
+  }
+
+  .admin-hero {
+    @apply flex items-end justify-between gap-4 rounded-lg border p-5;
+    background:
+      linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(17, 54, 66, 0.93)),
+      linear-gradient(90deg, rgba(20, 184, 166, 0.14), rgba(217, 119, 6, 0.1));
+    border-color: rgba(15, 76, 92, 0.16);
+    box-shadow: 0 20px 58px rgba(15, 23, 42, 0.12);
+  }
+
+  .admin-hero h2 {
+    @apply mt-1 text-2xl font-semibold text-white;
+  }
+
+  .admin-hero p:not(.workflow-kicker) {
+    @apply mt-1 text-sm text-slate-300;
+  }
+
+  .admin-stats-grid {
+    @apply grid gap-3;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .admin-stat-card {
+    @apply rounded-lg border bg-white/80 p-4;
+    border-color: rgba(15, 76, 92, 0.12);
+    box-shadow: 0 14px 34px rgba(26, 60, 71, 0.08);
+  }
+
+  .admin-stat-card span {
+    @apply grid h-9 w-9 place-items-center rounded-md bg-teal-50 text-teal-700;
+  }
+
+  .admin-stat-card p {
+    @apply mt-3 text-xs font-semibold text-muted-foreground;
+  }
+
+  .admin-stat-card strong {
+    @apply mt-1 block text-2xl font-semibold text-foreground;
+  }
+
+  .admin-insight-grid {
+    @apply grid gap-5;
+    grid-template-columns: minmax(0, 1fr) 300px;
+  }
+
+  .admin-panel,
+  .admin-side-panel {
+    @apply rounded-lg border bg-white/80 p-5;
+    border-color: rgba(15, 76, 92, 0.12);
+    box-shadow: 0 16px 40px rgba(26, 60, 71, 0.08);
+  }
+
+  .admin-panel-head {
+    @apply mb-4 flex items-start justify-between gap-3;
+  }
+
+  .admin-panel h3,
+  .admin-side-panel h3 {
+    @apply text-lg font-semibold text-foreground;
+  }
+
+  .admin-panel p {
+    @apply mt-1 text-sm text-muted-foreground;
+  }
+
+  .admin-side-panel {
+    @apply flex flex-col gap-3;
+    background:
+      linear-gradient(145deg, rgba(15, 23, 42, 0.96), rgba(17, 54, 66, 0.93)),
+      linear-gradient(90deg, rgba(20, 184, 166, 0.16), rgba(217, 119, 6, 0.1));
+  }
+
+  .admin-side-panel h3 {
+    @apply text-white;
+  }
+
+  .admin-side-panel > div {
+    @apply rounded-md border border-white/10 bg-white/10 p-3;
+  }
+
+  .admin-side-panel span {
+    @apply block text-xs font-semibold text-slate-300;
+  }
+
+  .admin-side-panel strong {
+    @apply mt-1 block break-words text-base font-semibold text-cyan-50;
+  }
+
+  .admin-table-wrap {
+    @apply w-full overflow-x-auto;
+  }
+
+  .admin-table {
+    @apply w-full min-w-[780px] border-separate border-spacing-0 text-left text-sm;
+  }
+
+  .admin-table th {
+    @apply border-b px-3 py-2 text-xs font-semibold uppercase text-muted-foreground;
+    border-color: rgba(15, 76, 92, 0.12);
+  }
+
+  .admin-table td {
+    @apply border-b px-3 py-3 align-middle text-slate-700;
+    border-color: rgba(15, 76, 92, 0.08);
+  }
+
+  .admin-table td strong {
+    @apply block font-semibold text-foreground;
+  }
+
+  .admin-table td span {
+    @apply mt-0.5 block text-xs text-muted-foreground;
+  }
+
+  .admin-table select {
+    @apply h-8 rounded-md border border-input bg-background px-2 text-sm;
+  }
+
+  .admin-table code {
+    @apply rounded bg-slate-100 px-2 py-1 text-xs text-slate-700;
+  }
+
+  .admin-empty {
+    @apply py-8 text-center text-muted-foreground;
+  }
+
+  .admin-loading {
+    @apply flex min-h-[360px] items-center justify-center gap-3 rounded-lg border bg-white/80 text-muted-foreground;
+  }
 }
 
 @media (max-width: 980px) {
@@ -538,13 +672,29 @@
     @apply min-h-0 p-4;
   }
 
+  .admin-shell {
+    @apply min-h-0 p-4;
+  }
+
   .workflow-hero {
     grid-template-columns: 1fr;
     background: linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(17, 54, 66, 0.94));
   }
 
+  .admin-hero {
+    @apply flex-col items-start;
+  }
+
   .workflow-progress {
     @apply grid-cols-2;
+  }
+
+  .admin-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-insight-grid {
+    grid-template-columns: 1fr;
   }
 
   .side-stack {
@@ -586,6 +736,10 @@
     @apply p-3;
   }
 
+  .admin-shell {
+    @apply p-3;
+  }
+
   .workflow-hero {
     @apply p-4;
   }
@@ -593,6 +747,10 @@
   .workflow-progress,
   .workflow-summary-card > div,
   .review-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-stats-grid {
     grid-template-columns: 1fr;
   }
 
