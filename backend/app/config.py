@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     deepseek_base_url: str = "https://api.deepseek.com"
     deepseek_model: str = "deepseek-chat"
     frontend_origin: str = "http://localhost:5173"
+    github_pages_origin: str = "https://yc20041001.github.io"
 
     # Redis & Session
     redis_url: str = "redis://127.0.0.1:6379/0"
