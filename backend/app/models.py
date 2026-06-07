@@ -101,5 +101,21 @@ class ValidateYamlResponse(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    username: str = Field(..., description="用户名")
-    password: str = Field(..., description="密码")
+    username: str = Field(..., min_length=1, max_length=64, description="用户名")
+    password: str = Field(..., min_length=1, description="密码")
+    captcha_id: str = Field(..., min_length=1, description="验证码 ID")
+    captcha_code: str = Field(..., min_length=1, max_length=8, description="验证码")
+
+
+class RegisterRequest(BaseModel):
+    username: str = Field(..., min_length=3, max_length=64, description="用户名")
+    password: str = Field(..., min_length=6, max_length=128, description="密码")
+    display_name: str | None = Field(default=None, max_length=100, description="显示名称")
+    captcha_id: str = Field(..., min_length=1, description="验证码 ID")
+    captcha_code: str = Field(..., min_length=1, max_length=8, description="验证码")
+
+
+class CaptchaResponse(BaseModel):
+    captcha_id: str = Field(..., description="验证码 ID")
+    image: str = Field(..., description="验证码 SVG Data URL")
+    expires_in: int = Field(..., description="验证码有效期，单位秒")

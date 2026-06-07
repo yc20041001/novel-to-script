@@ -2,13 +2,17 @@ from fastapi import APIRouter, HTTPException, Request
 from starlette.responses import JSONResponse
 
 from app.config import get_settings
-from app.models import LoginRequest
+from app.models import CaptchaResponse, LoginRequest, RegisterRequest
 
 router = APIRouter(tags=["auth"])
 
 
 def _get_store(request: Request):
     return request.app.state.session_store
+
+
+def _get_captcha_store(request: Request):
+    return request.app.state.captcha_store
 
 
 async def _verify_user(request: Request, body: LoginRequest) -> dict | None:
@@ -27,14 +31,15 @@ async def _verify_user(request: Request, body: LoginRequest) -> dict | None:
     return None
 
 
-@router.post("/api/auth/login")
-async def login(request: Request, body: LoginRequest) -> JSONResponse:
+async def _verify_captcha(request: Request, captcha_id: str, captcha_code: str) -> None:
+    captcha_store = _get_captcha_store(request)
+    is_valid = await captcha_store.verify_captcha(captcha_id, captcha_code)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail="验证码错误或已过期")
+
+
+async def _create_auth_response(request: Request, user: dict) -> JSONResponse:
     settings = get_settings()
-
-    user = await _verify_user(request, body)
-    if user is None:
-        raise HTTPException(status_code=401, detail="用户名或密码错误")
-
     store = _get_store(request)
     session_id = await store.create_session(
         {
@@ -64,6 +69,45 @@ async def login(request: Request, body: LoginRequest) -> JSONResponse:
         max_age=settings.session_ttl_seconds,
     )
     return resp
+
+
+@router.get("/api/auth/captcha", response_model=CaptchaResponse)
+async def captcha(request: Request) -> CaptchaResponse:
+    settings = get_settings()
+    captcha_store = _get_captcha_store(request)
+    payload = await captcha_store.create_captcha(settings.captcha_ttl_seconds)
+    return CaptchaResponse(**payload)
+
+
+@router.post("/api/auth/login")
+async def login(request: Request, body: LoginRequest) -> JSONResponse:
+    await _verify_captcha(request, body.captcha_id, body.captcha_code)
+
+    user = await _verify_user(request, body)
+    if user is None:
+        raise HTTPException(status_code=401, detail="用户名或密码错误")
+
+    return await _create_auth_response(request, user)
+
+
+@router.post("/api/auth/register")
+async def register(request: Request, body: RegisterRequest) -> JSONResponse:
+    await _verify_captcha(request, body.captcha_id, body.captcha_code)
+
+    user_repository = getattr(request.app.state, "user_repository", None)
+    if user_repository is None:
+        raise HTTPException(status_code=503, detail="用户服务不可用")
+
+    try:
+        user = await user_repository.create_user(
+            body.username.strip(),
+            body.password,
+            body.display_name.strip() if body.display_name else None,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+    return await _create_auth_response(request, user)
 
 
 @router.get("/api/auth/me")
