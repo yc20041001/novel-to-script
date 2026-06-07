@@ -4,7 +4,8 @@ import { Alert } from './ui/alert';
 import { Button } from './ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 
-const outputIconButtonClass = 'output-icon-button';
+const outputIconButtonClass =
+  'border-slate-500/30 bg-white/10 text-slate-100 hover:bg-teal-400/20 hover:text-white';
 
 function YamlWorkspace({
   yamlText,
@@ -106,22 +107,26 @@ function YamlWorkspace({
             <span className="editor-tab-active">script-output.yaml</span>
             <span>Schema ready</span>
           </div>
-          <span>{lineCount} 行</span>
+          <span className="editor-line-count">{lineCount} 行</span>
         </div>
-        <Editor
-          height="calc(100% - 38px)"
-          language="yaml"
-          value={yamlText}
-          theme="vs-dark"
-          options={{
-            minimap: { enabled: false },
-            fontSize: 14,
-            wordWrap: 'on',
-            scrollBeyondLastLine: false,
-            lineNumbersMinChars: 3,
-          }}
-          onChange={(value) => onYamlChange(value || '')}
-        />
+        <div className="editor-body">
+          <Editor
+            height="62vh"
+            language="yaml"
+            value={yamlText}
+            theme="vs-dark"
+            options={{
+              automaticLayout: true,
+              minimap: { enabled: false },
+              fontSize: 14,
+              wordWrap: 'on',
+              scrollBeyondLastLine: false,
+              lineNumbersMinChars: 3,
+              padding: { top: 12, bottom: 12 },
+            }}
+            onChange={(value) => onYamlChange(value || '')}
+          />
+        </div>
       </div>
     </section>
   );
