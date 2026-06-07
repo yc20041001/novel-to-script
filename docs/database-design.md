@@ -4,7 +4,7 @@
 
 当前版本的 Novel2Script 已引入“Redis 生成缓存 + MySQL 生成结果持久化”。用户输入章节后，后端会先根据章节内容和生成选项计算缓存键，命中 Redis 时直接返回历史剧本；未命中时生成剧本，并将结果写入 Redis 和 MySQL。
 
-如果项目继续扩展为在线工具，还可以继续保存用户作品、章节、生成任务、剧本版本和导出记录。因此本文档同时包含当前已实现的 `generated_scripts` 表，以及后续可扩展的数据库蓝图。
+当前数据库已经保存用户、小说项目、章节、生成任务、剧本版本和生成缓存记录。Redis 只保留 Session 与生成结果缓存，不作为业务内容的唯一存储。
 
 当前数据库：
 
@@ -24,6 +24,7 @@ MySQL 8.x
 数据库需要支持以下能力：
 
 - 保存用户创建的小说项目。
+- 保存登录用户。
 - 保存 3 个以上章节文本。
 - 记录每次 AI 生成任务的状态和错误信息。
 - 保存结构化剧本 JSON 和 YAML 输出。
@@ -32,35 +33,50 @@ MySQL 8.x
 - 支持一个小说项目生成多个剧本版本。
 - 支持后续导出、审计、回滚和继续编辑。
 
-非目标：
+仍然不进入数据库的内容：
 
-- 当前版本不实现用户账号系统。
-- 当前版本不实现多人协作。
-- 当前版本不保存 DeepSeek API Key。
-- 当前版本不保存支付、权限和团队数据。
+- Redis Session ID：短期登录态，继续由 Redis 管理。
+- Redis 生成缓存：加速重复请求，MySQL 才是持久化来源。
+- DeepSeek API Key：只保存在服务端 `.env`。
+- 前端临时编辑状态：用户未提交或未生成的草稿暂不持久化。
+- 支付、团队和多人协作数据：当前版本未实现。
 
 ## 3. 核心实体
 
 ```mermaid
 erDiagram
+  USER ||--o{ PROJECT : owns
   PROJECT ||--o{ CHAPTER : contains
   PROJECT ||--o{ GENERATION_JOB : has
   PROJECT ||--o{ SCRIPT_VERSION : produces
   GENERATION_JOB ||--o| SCRIPT_VERSION : creates
-  SCRIPT_VERSION ||--o{ EXPORT_RECORD : exports
+  GENERATED_SCRIPT ||--o| PROJECT : links
+  GENERATED_SCRIPT ||--o| GENERATION_JOB : links
+  GENERATED_SCRIPT ||--o| SCRIPT_VERSION : links
+
+  USER {
+    bigint id PK
+    string username
+    string password_hash
+    string display_name
+    string role
+    datetime created_at
+    datetime updated_at
+  }
 
   PROJECT {
-    string id PK
+    bigint id PK
     string title
     string description
     string status
+    string source_type
     datetime created_at
     datetime updated_at
   }
 
   CHAPTER {
-    string id PK
-    string project_id FK
+    bigint id PK
+    bigint project_id FK
     int chapter_order
     string title
     text content
@@ -70,8 +86,9 @@ erDiagram
   }
 
   GENERATION_JOB {
-    string id PK
-    string project_id FK
+    bigint id PK
+    bigint project_id FK
+    string cache_key
     string status
     string model_provider
     string model_name
@@ -83,9 +100,9 @@ erDiagram
   }
 
   SCRIPT_VERSION {
-    string id PK
-    string project_id FK
-    string generation_job_id FK
+    bigint id PK
+    bigint project_id FK
+    bigint generation_job_id FK
     string version_name
     json script_json
     text yaml_text
@@ -94,18 +111,44 @@ erDiagram
     datetime updated_at
   }
 
-  EXPORT_RECORD {
-    string id PK
-    string script_version_id FK
-    string export_format
-    string file_name
-    datetime exported_at
+  GENERATED_SCRIPT {
+    bigint id PK
+    string cache_key
+    bigint project_id FK
+    bigint generation_job_id FK
+    bigint script_version_id FK
+    json request_json
+    json response_json
+    text yaml_text
+    boolean used_mock
+    datetime created_at
+    datetime updated_at
   }
 ```
 
 ## 4. 表结构设计
 
-### 4.1 generated_scripts（当前已实现）
+### 4.1 users（当前已实现）
+
+保存登录用户。系统启动时会根据 `.env` 中的 `DEMO_USERNAME` 和 `DEMO_PASSWORD` 自动创建默认演示用户。
+
+| 字段 | 类型 | 约束 | 说明 |
+| --- | --- | --- | --- |
+| id | BIGINT UNSIGNED | PK, AUTO_INCREMENT | 用户 ID |
+| username | VARCHAR(64) | UNIQUE, NOT NULL | 登录用户名 |
+| password_hash | VARCHAR(255) | NOT NULL | PBKDF2 哈希后的密码 |
+| display_name | VARCHAR(100) | NOT NULL | 展示名 |
+| role | VARCHAR(32) | NOT NULL | 用户角色 |
+| created_at | TIMESTAMP | NOT NULL | 创建时间 |
+| updated_at | TIMESTAMP | NOT NULL | 更新时间 |
+
+设计原因：
+
+- 用户账号属于长期业务数据，应进入 MySQL。
+- 密码不能明文保存，因此只保存 PBKDF2 哈希。
+- Session ID 仍保存在 Redis，因为它是短期登录态。
+
+### 4.2 generated_scripts（当前已实现）
 
 保存 `/api/generate` 的请求快照和生成结果。
 
@@ -113,6 +156,9 @@ erDiagram
 | --- | --- | --- | --- |
 | id | BIGINT UNSIGNED | PK, AUTO_INCREMENT | 自增主键 |
 | cache_key | VARCHAR(96) | UNIQUE, NOT NULL | `chapters + options` 的 SHA-256 缓存键 |
+| project_id | BIGINT UNSIGNED | NULL | 关联项目 |
+| generation_job_id | BIGINT UNSIGNED | NULL | 关联生成任务 |
+| script_version_id | BIGINT UNSIGNED | NULL | 关联剧本版本 |
 | request_json | JSON | NOT NULL | 请求快照 |
 | response_json | JSON | NOT NULL | 后端返回给前端的完整响应 |
 | yaml_text | LONGTEXT | NOT NULL | 生成出的 YAML 文本 |
@@ -134,36 +180,37 @@ erDiagram
 - `response_json` 保存完整响应，Redis 缓存失效后可直接恢复前端需要的数据。
 - `yaml_text` 单独冗余保存，方便未来做下载、搜索或导出。
 
-### 4.2 projects（后续扩展）
+### 4.3 projects（当前已实现）
 
 保存一个小说改编项目。
 
 | 字段 | 类型 | 约束 | 说明 |
 | --- | --- | --- | --- |
-| id | UUID / TEXT | PK | 项目 ID |
+| id | BIGINT UNSIGNED | PK, AUTO_INCREMENT | 项目 ID |
 | title | VARCHAR(200) | NOT NULL | 项目标题 |
 | description | TEXT | NULL | 项目说明 |
-| status | VARCHAR(30) | NOT NULL | draft、generating、completed、archived |
+| status | VARCHAR(32) | NOT NULL | draft、generating、completed、archived |
+| source_type | VARCHAR(32) | NOT NULL | generate_request 等来源 |
 | created_at | TIMESTAMP | NOT NULL | 创建时间 |
 | updated_at | TIMESTAMP | NOT NULL | 更新时间 |
 
 设计原因：
 
 - `project` 是章节、生成任务和剧本版本的聚合根。
-- 即使当前无账号系统，也可以先围绕项目组织数据。
+- 每次新的生成请求会创建一个项目，用于承载章节、任务和版本。
 
-### 4.2 chapters
+### 4.4 chapters（当前已实现）
 
 保存小说章节。
 
 | 字段 | 类型 | 约束 | 说明 |
 | --- | --- | --- | --- |
-| id | UUID / TEXT | PK | 章节 ID |
-| project_id | UUID / TEXT | FK, NOT NULL | 所属项目 |
-| chapter_order | INTEGER | NOT NULL | 章节顺序 |
-| title | VARCHAR(200) | NOT NULL | 章节标题 |
-| content | TEXT | NOT NULL | 章节正文 |
-| content_length | INTEGER | NOT NULL | 正文长度 |
+| id | BIGINT UNSIGNED | PK, AUTO_INCREMENT | 章节 ID |
+| project_id | BIGINT UNSIGNED | FK, NOT NULL | 所属项目 |
+| chapter_order | INT | NOT NULL | 章节顺序 |
+| title | VARCHAR(255) | NOT NULL | 章节标题 |
+| content | LONGTEXT | NOT NULL | 章节正文 |
+| content_length | INT | NOT NULL | 正文长度 |
 | created_at | TIMESTAMP | NOT NULL | 创建时间 |
 | updated_at | TIMESTAMP | NOT NULL | 更新时间 |
 
@@ -179,41 +226,42 @@ UNIQUE (project_id, chapter_order)
 - `chapter_order` 保证模型处理时能恢复原文顺序。
 - `content_length` 便于后续做长文本限制、费用估算和分块处理。
 
-### 4.3 generation_jobs
+### 4.5 generation_jobs（当前已实现）
 
 记录一次 AI 生成任务。
 
 | 字段 | 类型 | 约束 | 说明 |
 | --- | --- | --- | --- |
-| id | UUID / TEXT | PK | 生成任务 ID |
-| project_id | UUID / TEXT | FK, NOT NULL | 所属项目 |
+| id | BIGINT UNSIGNED | PK, AUTO_INCREMENT | 生成任务 ID |
+| project_id | BIGINT UNSIGNED | FK, NOT NULL | 所属项目 |
+| cache_key | VARCHAR(96) | NOT NULL | 生成缓存键 |
 | status | VARCHAR(30) | NOT NULL | pending、running、success、failed、mocked |
 | model_provider | VARCHAR(50) | NOT NULL | deepseek |
 | model_name | VARCHAR(100) | NOT NULL | deepseek-chat |
-| request_snapshot | JSON / JSONB | NOT NULL | 生成时的章节和参数快照 |
-| error_message | TEXT | NULL | 失败原因 |
-| started_at | TIMESTAMP | NULL | 开始时间 |
+| request_json | JSON | NOT NULL | 生成时的章节和参数快照 |
+| used_mock | BOOLEAN | NOT NULL | 是否 mock 回退 |
+| started_at | TIMESTAMP | NOT NULL | 开始时间 |
 | finished_at | TIMESTAMP | NULL | 完成时间 |
 | created_at | TIMESTAMP | NOT NULL | 创建时间 |
 
 设计原因：
 
 - AI 调用存在失败、超时和回退，因此需要任务表记录生成过程。
-- `request_snapshot` 保存生成时的输入快照，避免章节被修改后无法追溯当时生成依据。
-- `mocked` 状态用于记录演示回退生成。
+- `request_json` 保存生成时的输入快照，避免章节被修改后无法追溯当时生成依据。
+- `used_mock` 用于记录是否走演示回退生成。
 
-### 4.4 script_versions
+### 4.6 script_versions（当前已实现）
 
 保存剧本版本。
 
 | 字段 | 类型 | 约束 | 说明 |
 | --- | --- | --- | --- |
-| id | UUID / TEXT | PK | 剧本版本 ID |
-| project_id | UUID / TEXT | FK, NOT NULL | 所属项目 |
-| generation_job_id | UUID / TEXT | FK, NULL | 来源生成任务 |
+| id | BIGINT UNSIGNED | PK, AUTO_INCREMENT | 剧本版本 ID |
+| project_id | BIGINT UNSIGNED | FK, NOT NULL | 所属项目 |
+| generation_job_id | BIGINT UNSIGNED | FK, NOT NULL | 来源生成任务 |
 | version_name | VARCHAR(100) | NOT NULL | 版本名，如 v1、人工修改版 |
-| script_json | JSON / JSONB | NOT NULL | 结构化剧本对象 |
-| yaml_text | TEXT | NOT NULL | YAML 剧本文本 |
+| script_json | JSON | NOT NULL | 结构化剧本对象 |
+| yaml_text | LONGTEXT | NOT NULL | YAML 剧本文本 |
 | is_latest | BOOLEAN | NOT NULL | 是否最新版本 |
 | created_at | TIMESTAMP | NOT NULL | 创建时间 |
 | updated_at | TIMESTAMP | NOT NULL | 更新时间 |
@@ -224,23 +272,14 @@ UNIQUE (project_id, chapter_order)
 - `yaml_text` 保留用户看到和下载的最终文本。
 - 一个项目可能多次生成或人工修改，因此需要版本表，而不是只在项目表保存一个结果。
 
-约束建议：
-
-```sql
--- PostgreSQL 可用部分唯一索引保证每个项目只有一个最新版本
-CREATE UNIQUE INDEX idx_script_versions_latest
-ON script_versions(project_id)
-WHERE is_latest = true;
-```
-
-### 4.5 export_records
+### 4.7 export_records（后续扩展）
 
 记录剧本导出行为。
 
 | 字段 | 类型 | 约束 | 说明 |
 | --- | --- | --- | --- |
-| id | UUID / TEXT | PK | 导出记录 ID |
-| script_version_id | UUID / TEXT | FK, NOT NULL | 来源剧本版本 |
+| id | BIGINT UNSIGNED | PK, AUTO_INCREMENT | 导出记录 ID |
+| script_version_id | BIGINT UNSIGNED | FK, NOT NULL | 来源剧本版本 |
 | export_format | VARCHAR(30) | NOT NULL | yaml、json、txt、docx |
 | file_name | VARCHAR(255) | NOT NULL | 导出文件名 |
 | exported_at | TIMESTAMP | NOT NULL | 导出时间 |
@@ -250,69 +289,18 @@ WHERE is_latest = true;
 - 当前只支持 YAML 下载，后续可能支持 JSON、TXT、DOCX 或剧本软件格式。
 - 导出记录可以用于审计、最近导出和文件管理。
 
-## 5. SQL 建表示例
+## 5. 建表方式
 
-以下 SQL 以 PostgreSQL 为目标数据库。
+当前项目没有引入 Alembic。FastAPI 启动时会由两个 Repository 自动执行兼容性建表：
 
-```sql
-CREATE TABLE projects (
-  id UUID PRIMARY KEY,
-  title VARCHAR(200) NOT NULL,
-  description TEXT,
-  status VARCHAR(30) NOT NULL DEFAULT 'draft',
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
+| Repository | 创建/维护的表 |
+| --- | --- |
+| `MySQLUserRepository` | `users` |
+| `MySQLGenerationRepository` | `projects`、`chapters`、`generation_jobs`、`script_versions`、`generated_scripts` |
 
-CREATE TABLE chapters (
-  id UUID PRIMARY KEY,
-  project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-  chapter_order INTEGER NOT NULL,
-  title VARCHAR(200) NOT NULL,
-  content TEXT NOT NULL,
-  content_length INTEGER NOT NULL,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE (project_id, chapter_order)
-);
+`generated_scripts` 是已有表，代码会用增量方式补充 `project_id`、`generation_job_id`、`script_version_id` 三个关联字段，因此旧数据不会被删除。
 
-CREATE TABLE generation_jobs (
-  id UUID PRIMARY KEY,
-  project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-  status VARCHAR(30) NOT NULL DEFAULT 'pending',
-  model_provider VARCHAR(50) NOT NULL DEFAULT 'deepseek',
-  model_name VARCHAR(100) NOT NULL DEFAULT 'deepseek-chat',
-  request_snapshot JSONB NOT NULL,
-  error_message TEXT,
-  started_at TIMESTAMP,
-  finished_at TIMESTAMP,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE script_versions (
-  id UUID PRIMARY KEY,
-  project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-  generation_job_id UUID REFERENCES generation_jobs(id) ON DELETE SET NULL,
-  version_name VARCHAR(100) NOT NULL,
-  script_json JSONB NOT NULL,
-  yaml_text TEXT NOT NULL,
-  is_latest BOOLEAN NOT NULL DEFAULT false,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE export_records (
-  id UUID PRIMARY KEY,
-  script_version_id UUID NOT NULL REFERENCES script_versions(id) ON DELETE CASCADE,
-  export_format VARCHAR(30) NOT NULL,
-  file_name VARCHAR(255) NOT NULL,
-  exported_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE UNIQUE INDEX idx_script_versions_latest
-ON script_versions(project_id)
-WHERE is_latest = true;
-```
+后续生产化建议引入 Alembic 或 Flyway 管理正式 migration 文件。
 
 ## 6. 索引设计
 
@@ -322,8 +310,8 @@ WHERE is_latest = true;
 | generation_jobs | `(project_id, created_at DESC)` | 查询项目生成历史 |
 | generation_jobs | `(status, created_at)` | 后续异步任务队列查询 |
 | script_versions | `(project_id, created_at DESC)` | 查询项目剧本版本 |
-| script_versions | `(project_id) WHERE is_latest = true` | 快速读取最新版本 |
-| export_records | `(script_version_id, exported_at DESC)` | 查询导出历史 |
+| generated_scripts | `UNIQUE(cache_key)` | 重复请求去重 |
+| generated_scripts | `(created_at)` | 排查和统计生成记录 |
 
 设计原则：
 
@@ -345,12 +333,17 @@ WHERE is_latest = true;
 ### 7.2 生成剧本
 
 ```text
-读取项目章节
-  -> 创建 generation_jobs(status=running)
-  -> 调用 DeepSeek
-  -> Pydantic 校验结构
-  -> 写入 script_versions
-  -> 更新 generation_jobs(status=success)
+前端提交章节
+  -> 计算 cache_key
+  -> Redis 命中则直接返回
+  -> MySQL generated_scripts 命中则返回并回填 Redis
+  -> 调用 DeepSeek / mock fallback
+  -> 创建 projects
+  -> 批量创建 chapters
+  -> 创建 generation_jobs(status=success)
+  -> 创建 script_versions
+  -> 写入 generated_scripts
+  -> 写入 Redis
 ```
 
 如果 AI 调用失败：
@@ -387,43 +380,9 @@ WHERE is_latest = true;
   -> MySQL 命中：返回并回填 Redis
   -> 未命中：调用 DeepSeek / mock fallback
   -> 写入 Redis
-  -> 写入 MySQL generated_scripts
+  -> 写入 MySQL projects / chapters / generation_jobs / script_versions / generated_scripts
   -> 返回 YAML
 ```
-
-未来引入数据库后，可以新增这些后端模块：
-
-```text
-backend/app/db/
-  session.py
-  models.py
-  migrations/
-
-backend/app/repositories/
-  project_repository.py
-  chapter_repository.py
-  generation_job_repository.py
-  script_version_repository.py
-
-backend/app/services/
-  project_service.py
-  script_version_service.py
-```
-
-建议 ORM：
-
-```text
-SQLAlchemy 2.x + Alembic
-```
-
-引入顺序：
-
-1. 新增数据库连接和迁移工具。
-2. 新增 `projects` 和 `chapters`。
-3. 新增 `generation_jobs`。
-4. 新增 `script_versions`。
-5. 新增 `export_records`。
-6. 将 `/api/generate` 从纯即时接口扩展为可保存项目和版本。
 
 ## 9. 隐私与安全设计
 
@@ -438,10 +397,9 @@ SQLAlchemy 2.x + Alembic
 - 如引入账号系统，所有 project 查询必须按 user_id 隔离。
 - 删除项目时级联删除章节、任务、版本和导出记录。
 
-后续如果添加用户系统，需要新增：
+后续如果添加多人协作，需要新增：
 
 ```text
-users
 project_members
 ```
 
@@ -455,11 +413,11 @@ owner_id
 
 本地开发阶段：
 
-- SQLite 文件定期复制备份即可。
+- 使用 `mysqldump` 导出 MySQL 数据库。
 
 生产阶段：
 
-- PostgreSQL 开启每日自动备份。
+- MySQL 开启每日自动备份。
 - 高价值用户作品应支持导出 YAML 作为离线备份。
 - 数据恢复后需要验证 `projects -> chapters -> script_versions` 关系完整。
 
@@ -476,7 +434,7 @@ owner_id
 
 ```text
 编写 Alembic migration
-  -> 本地 SQLite/PostgreSQL 测试
+  -> 本地 MySQL 测试
   -> 备份数据库
   -> 执行迁移
   -> 验证表结构和关键查询

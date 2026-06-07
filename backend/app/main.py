@@ -20,6 +20,7 @@ from app.services.generation_cache_service import (
 from app.services.deepseek_service import DeepSeekError, generate_script_with_deepseek
 from app.services.generation_repository import MySQLGenerationRepository, NoopGenerationRepository
 from app.services.mock_service import build_mock_script
+from app.services.user_repository import InMemoryUserRepository, MySQLUserRepository
 from app.services.yaml_service import script_to_yaml, validate_yaml
 
 settings = get_settings()
@@ -66,11 +67,25 @@ async def init_generation_repository(app: FastAPI) -> None:
         app.state.generation_repository = NoopGenerationRepository()
 
 
+async def init_user_repository(app: FastAPI) -> None:
+    try:
+        repository = MySQLUserRepository(settings)
+        await repository.init()
+        app.state.user_repository = repository
+        print("✓ MySQL user repository connected")
+    except Exception as exc:
+        print(f"⚠ MySQL 用户表不可用，使用内存 demo 用户：{exc.__class__.__name__}")
+        repository = InMemoryUserRepository(settings)
+        await repository.init()
+        app.state.user_repository = repository
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_session_store(app)
     await init_generation_cache(app)
     await init_generation_repository(app)
+    await init_user_repository(app)
     yield
 
 
