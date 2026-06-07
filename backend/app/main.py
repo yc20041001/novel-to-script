@@ -12,7 +12,13 @@ from app.models import (
     ValidateYamlRequest,
     ValidateYamlResponse,
 )
+from app.services.generation_cache_service import (
+    InMemoryGenerationCache,
+    RedisGenerationCache,
+    build_generation_cache_key,
+)
 from app.services.deepseek_service import DeepSeekError, generate_script_with_deepseek
+from app.services.generation_repository import MySQLGenerationRepository, NoopGenerationRepository
 from app.services.mock_service import build_mock_script
 from app.services.yaml_service import script_to_yaml, validate_yaml
 
@@ -35,9 +41,36 @@ async def init_session_store(app: FastAPI) -> None:
         app.state.session_store = InMemorySessionStore()
 
 
+async def init_generation_cache(app: FastAPI) -> None:
+    try:
+        cache = RedisGenerationCache(
+            settings.redis_url,
+            password=settings.redis_password or None,
+        )
+        await cache.ping()
+        app.state.generation_cache = cache
+        print("✓ Redis generation cache connected")
+    except Exception as exc:
+        print(f"⚠ Redis 生成缓存不可用，使用内存缓存：{exc.__class__.__name__}")
+        app.state.generation_cache = InMemoryGenerationCache()
+
+
+async def init_generation_repository(app: FastAPI) -> None:
+    try:
+        repository = MySQLGenerationRepository(settings)
+        await repository.init()
+        app.state.generation_repository = repository
+        print("✓ MySQL generation repository connected")
+    except Exception as exc:
+        print(f"⚠ MySQL 生成结果落库不可用，跳过数据库保存：{exc.__class__.__name__}")
+        app.state.generation_repository = NoopGenerationRepository()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_session_store(app)
+    await init_generation_cache(app)
+    await init_generation_repository(app)
     yield
 
 
@@ -76,6 +109,25 @@ async def schema() -> dict:
 
 @app.post("/api/generate", response_model=GenerateResponse)
 async def generate(request: GenerateRequest) -> GenerateResponse:
+    cache_key = build_generation_cache_key(request)
+    cache = getattr(app.state, "generation_cache", InMemoryGenerationCache())
+    repository = getattr(app.state, "generation_repository", NoopGenerationRepository())
+
+    cached_payload = await cache.get(cache_key)
+    if cached_payload is not None:
+        cached_payload["cache_hit"] = True
+        cached_payload["cache_key"] = cache_key
+        cached_payload["storage"] = "redis"
+        return GenerateResponse.model_validate(cached_payload)
+
+    persisted_payload = await repository.get(cache_key)
+    if persisted_payload is not None:
+        persisted_payload["cache_hit"] = True
+        persisted_payload["cache_key"] = cache_key
+        persisted_payload["storage"] = "mysql"
+        await cache.set(cache_key, persisted_payload, settings.generation_cache_ttl_seconds)
+        return GenerateResponse.model_validate(persisted_payload)
+
     used_mock = False
     try:
         script = await generate_script_with_deepseek(
@@ -87,7 +139,22 @@ async def generate(request: GenerateRequest) -> GenerateResponse:
         used_mock = True
         script = build_mock_script([chapter.title for chapter in request.chapters])
 
-    return GenerateResponse(script=script, yaml=script_to_yaml(script), used_mock=used_mock)
+    response = GenerateResponse(
+        script=script,
+        yaml=script_to_yaml(script),
+        used_mock=used_mock,
+        cache_hit=False,
+        cache_key=cache_key,
+        storage="generated",
+    )
+    response_payload = response.model_dump(mode="json")
+    await cache.set(cache_key, response_payload, settings.generation_cache_ttl_seconds)
+    await repository.save(
+        cache_key,
+        request.model_dump(mode="json"),
+        response_payload,
+    )
+    return response
 
 
 @app.post("/api/validate-yaml", response_model=ValidateYamlResponse)

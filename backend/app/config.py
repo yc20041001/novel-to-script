@@ -14,6 +14,15 @@ class Settings(BaseSettings):
     redis_password: str = ""
     session_cookie_name: str = "novel2script_session"
     session_ttl_seconds: int = 86400
+    generation_cache_ttl_seconds: int = 604800
+
+    # MySQL persistence
+    mysql_host: str = "127.0.0.1"
+    mysql_port: int = 3306
+    mysql_user: str = "root"
+    mysql_password: str = ""
+    mysql_database: str = "novel_to_script"
+
     demo_username: str = "admin"
     demo_password: str = "admin123"
 
