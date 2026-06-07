@@ -1,8 +1,8 @@
-import { BookOpenText, LogOut, Server, UserCircle } from 'lucide-react';
+import { BookOpenText, LayoutDashboard, LogOut, PenLine, Server, UserCircle } from 'lucide-react';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 
-function AppHeader({ chapterCount, validation, apiBaseUrl, user, onLogout }) {
+function AppHeader({ chapterCount, validation, apiBaseUrl, user, currentView, onViewChange, onLogout }) {
   return (
     <header className="topbar">
       <div className="brand-lockup">
@@ -26,6 +26,20 @@ function AppHeader({ chapterCount, validation, apiBaseUrl, user, onLogout }) {
               <UserCircle className="h-3.5 w-3.5" />
               {user.username}
             </span>
+            {user.role === 'admin' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onViewChange(currentView === 'admin' ? 'workspace' : 'admin')}
+              >
+                {currentView === 'admin' ? (
+                  <PenLine className="h-3.5 w-3.5" />
+                ) : (
+                  <LayoutDashboard className="h-3.5 w-3.5" />
+                )}
+                {currentView === 'admin' ? '返回工作台' : '管理后台'}
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={onLogout}>
               <LogOut className="h-3.5 w-3.5" />
               退出
