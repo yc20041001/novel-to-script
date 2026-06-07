@@ -86,6 +86,9 @@ class GenerateResponse(BaseModel):
     script: ScriptDocument
     yaml: str
     used_mock: bool = Field(default=False, description="是否使用演示数据")
+    cache_hit: bool = Field(default=False, description="是否命中缓存")
+    cache_key: str | None = Field(default=None, description="生成请求缓存键")
+    storage: str = Field(default="generated", description="结果来源：generated、redis 或 mysql")
 
 
 class ValidateYamlRequest(BaseModel):

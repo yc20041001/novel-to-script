@@ -2,22 +2,22 @@
 
 ## 1. 设计定位
 
-当前版本的 Novel2Script 以“本地运行 + 即时生成 + YAML 下载”为主，核心功能不强制依赖数据库。用户输入章节后，后端调用 DeepSeek API 生成剧本并直接返回给前端，前端负责展示、编辑和下载。
+当前版本的 Novel2Script 已引入“Redis 生成缓存 + MySQL 生成结果持久化”。用户输入章节后，后端会先根据章节内容和生成选项计算缓存键，命中 Redis 时直接返回历史剧本；未命中时生成剧本，并将结果写入 Redis 和 MySQL。
 
-但是如果项目继续扩展为在线工具，就需要保存用户作品、章节、生成任务、剧本版本和导出记录。因此本数据库设计采用“当前可不落库，未来可扩展落库”的方式，作为后续开发的数据库蓝图。
+如果项目继续扩展为在线工具，还可以继续保存用户作品、章节、生成任务、剧本版本和导出记录。因此本文档同时包含当前已实现的 `generated_scripts` 表，以及后续可扩展的数据库蓝图。
 
-推荐数据库：
+当前数据库：
 
 ```text
-开发阶段：SQLite
-生产阶段：PostgreSQL
+MySQL 8.x
 ```
 
 选择原因：
 
-- SQLite 适合本地演示和快速开发，部署成本低。
-- PostgreSQL 适合后续在线化，支持 JSONB、全文检索、事务和复杂索引。
-- 剧本内容同时包含结构化字段和大段文本，PostgreSQL 的 JSONB 能很好地保存 AI 生成的结构化结果。
+- MySQL 在本地 Docker 和课程项目中部署简单。
+- MySQL JSON 字段可保存请求快照和结构化响应。
+- YAML 输出使用 LONGTEXT 保存，避免大文本截断。
+- Redis 负责高频重复请求命中，MySQL 负责持久化和 Redis 丢失后的恢复。
 
 ## 2. 数据库目标
 
@@ -27,6 +27,8 @@
 - 保存 3 个以上章节文本。
 - 记录每次 AI 生成任务的状态和错误信息。
 - 保存结构化剧本 JSON 和 YAML 输出。
+- 对相同章节和生成选项做请求去重。
+- Redis 未命中时可从 MySQL 恢复历史生成结果。
 - 支持一个小说项目生成多个剧本版本。
 - 支持后续导出、审计、回滚和继续编辑。
 
@@ -103,7 +105,36 @@ erDiagram
 
 ## 4. 表结构设计
 
-### 4.1 projects
+### 4.1 generated_scripts（当前已实现）
+
+保存 `/api/generate` 的请求快照和生成结果。
+
+| 字段 | 类型 | 约束 | 说明 |
+| --- | --- | --- | --- |
+| id | BIGINT UNSIGNED | PK, AUTO_INCREMENT | 自增主键 |
+| cache_key | VARCHAR(96) | UNIQUE, NOT NULL | `chapters + options` 的 SHA-256 缓存键 |
+| request_json | JSON | NOT NULL | 请求快照 |
+| response_json | JSON | NOT NULL | 后端返回给前端的完整响应 |
+| yaml_text | LONGTEXT | NOT NULL | 生成出的 YAML 文本 |
+| used_mock | BOOLEAN | NOT NULL | 是否为 mock 回退结果 |
+| created_at | TIMESTAMP | NOT NULL | 创建时间 |
+| updated_at | TIMESTAMP | NOT NULL | 更新时间 |
+
+索引：
+
+| 索引 | 字段 | 说明 |
+| --- | --- | --- |
+| UNIQUE | cache_key | 相同请求只保存一份结果 |
+| idx_generated_scripts_created_at | created_at | 方便按时间排查生成记录 |
+
+设计原因：
+
+- `cache_key` 保证重复生成请求可以快速定位历史结果。
+- `request_json` 保存输入，便于追溯生成来源。
+- `response_json` 保存完整响应，Redis 缓存失效后可直接恢复前端需要的数据。
+- `yaml_text` 单独冗余保存，方便未来做下载、搜索或导出。
+
+### 4.2 projects（后续扩展）
 
 保存一个小说改编项目。
 
@@ -346,13 +377,18 @@ WHERE is_latest = true;
 
 ## 8. 与当前代码的关系
 
-当前代码是无数据库 MVP：
+当前代码的数据流：
 
 ```text
 前端输入章节
   -> POST /api/generate
-  -> 后端即时生成
-  -> 直接返回 YAML
+  -> 后端计算 generation cache_key
+  -> Redis 命中：直接返回
+  -> MySQL 命中：返回并回填 Redis
+  -> 未命中：调用 DeepSeek / mock fallback
+  -> 写入 Redis
+  -> 写入 MySQL generated_scripts
+  -> 返回 YAML
 ```
 
 未来引入数据库后，可以新增这些后端模块：
@@ -469,4 +505,3 @@ owner_id
 | comments | 协作批注 |
 
 这些扩展不应一次性加入当前 MVP，避免数据库复杂度过高。
-

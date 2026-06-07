@@ -277,7 +277,14 @@ GET /api/schema
 
 ### 7.1 用途
 
-接收至少 3 个小说章节，调用 DeepSeek API 生成结构化剧本，并返回剧本对象和 YAML 文本。
+接收至少 3 个小说章节，生成结构化剧本，并返回剧本对象和 YAML 文本。
+
+后端会根据 `chapters + options` 计算稳定缓存键：
+
+1. 先查 Redis 生成缓存。
+2. Redis 未命中时查 MySQL `generated_scripts` 表，并回填 Redis。
+3. Redis 和 MySQL 都未命中时才调用 DeepSeek API。
+4. 新生成结果会先写入 Redis，再保存到 MySQL。
 
 ### 7.2 请求
 
@@ -349,7 +356,10 @@ POST /api/generate
     "notes": []
   },
   "yaml": "metadata:\n  title: 雨夜来信\n...",
-  "used_mock": false
+  "used_mock": false,
+  "cache_hit": false,
+  "cache_key": "generation:...",
+  "storage": "generated"
 }
 ```
 
@@ -360,8 +370,13 @@ POST /api/generate
 | script | object | 结构化剧本对象，符合 ScriptDocument Schema |
 | yaml | string | 由 script 转换得到的 YAML 文本 |
 | used_mock | boolean | 是否使用演示回退数据 |
+| cache_hit | boolean | 是否命中缓存 |
+| cache_key | string | 本次请求对应的缓存键 |
+| storage | string | 结果来源：generated、redis 或 mysql |
 
 `used_mock=true` 表示后端未配置 DeepSeek API Key 或 AI 调用失败，返回了本地演示剧本。
+
+`cache_hit=true` 表示没有重新调用 DeepSeek。`storage=redis` 表示直接命中 Redis，`storage=mysql` 表示 Redis 未命中但 MySQL 有历史结果，并已回填 Redis。
 
 ### 7.6 校验失败
 
@@ -661,12 +676,14 @@ POST {DEEPSEEK_BASE_URL}/chat/completions
 
 ## 14. 幂等性与超时
 
-当前 `/api/generate` 是即时生成接口，不保证幂等。相同章节多次调用可能得到不同剧本，因为 AI 生成具有随机性。
+当前 `/api/generate` 对相同 `chapters + options` 采用缓存幂等策略。第一次请求生成并写入 Redis/MySQL，后续相同请求优先直接返回缓存结果，避免重复消耗 DeepSeek 调用。
 
 当前建议：
 
 - 前端生成按钮在请求期间进入 loading 状态，避免重复点击。
 - 后端 AI 调用超时时间设置为 90 秒。
+- Redis 缓存 TTL 由 `GENERATION_CACHE_TTL_SECONDS` 控制。
+- MySQL 持久化表为 `generated_scripts`。
 
 后续引入数据库和生成任务后，可以通过 `generation_jobs` 支持：
 
