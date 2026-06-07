@@ -162,6 +162,19 @@ function App() {
     }
   };
 
+  const handleImportChapters = (parsed) => {
+    if (parsed.length === 0) {
+      toast.error('文件内容为空或无法解析，请检查文件。');
+      return;
+    }
+    setChapters(parsed);
+    toast.success(`已导入 ${parsed.length} 个章节`);
+  };
+
+  const handleImportError = (message) => {
+    toast.error(message);
+  };
+
   const goToOptions = () => {
     if (validation) {
       toast.warning(validation);
@@ -180,7 +193,8 @@ function App() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'script-output.yaml';
+    const dateStr = new Date().toISOString().slice(0, 10);
+    link.download = `script-output-${dateStr}.yaml`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -279,13 +293,15 @@ function App() {
 
         {currentStep === 'chapters' && (
           <section className="workflow-stage workflow-stage-wide">
-          <ChapterList
-            chapters={chapters}
-            onUpdateChapter={updateChapter}
-            onAddChapter={addChapter}
-            onRemoveChapter={removeChapter}
-            validation={validation}
-          />
+            <ChapterList
+              chapters={chapters}
+              onUpdateChapter={updateChapter}
+              onAddChapter={addChapter}
+              onRemoveChapter={removeChapter}
+              onImportChapters={handleImportChapters}
+              onImportError={handleImportError}
+              validation={validation}
+            />
             <div className="workflow-actions">
               <Button onClick={goToOptions} disabled={Boolean(validation)}>
                 下一步
