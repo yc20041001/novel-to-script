@@ -61,12 +61,14 @@ const workflowSteps = [
   { id: 'result', title: '完成内容', description: '查看和导出' },
 ];
 
+const createInitialChapters = () => initialChapters.map((chapter) => ({ ...chapter }));
+
 function App() {
   const toast = useToast();
   const [authLoading, setAuthLoading] = useState(true);
   const [user, setUser] = useState(null);
-  const [chapters, setChapters] = useState(initialChapters);
-  const [generationOptions, setGenerationOptions] = useState(defaultOptions);
+  const [chapters, setChapters] = useState(createInitialChapters);
+  const [generationOptions, setGenerationOptions] = useState({ ...defaultOptions });
   const [yamlText, setYamlText] = useState(emptyYaml);
   const [loading, setLoading] = useState(false);
   const [yamlChecking, setYamlChecking] = useState(false);
@@ -75,6 +77,19 @@ function App() {
   const [usedMock, setUsedMock] = useState(false);
   const [currentStep, setCurrentStep] = useState('chapters');
   const [currentView, setCurrentView] = useState('workspace');
+
+  const resetWorkspaceState = () => {
+    setChapters(createInitialChapters());
+    setGenerationOptions({ ...defaultOptions });
+    setYamlText(emptyYaml);
+    setLoading(false);
+    setYamlChecking(false);
+    setSchemaOpen(false);
+    setSchemaText('');
+    setUsedMock(false);
+    setCurrentStep('chapters');
+    setCurrentView('workspace');
+  };
 
   useEffect(() => {
     checkAuth()
@@ -99,7 +114,7 @@ function App() {
       // 即使后端调用失败也清除前端状态
     }
     setUser(null);
-    setCurrentView('workspace');
+    resetWorkspaceState();
   };
 
   const validation = useMemo(() => {
@@ -257,8 +272,8 @@ function App() {
     return (
       <LoginPage
         onLoginSuccess={(u) => {
+          resetWorkspaceState();
           setUser(u);
-          setCurrentView('workspace');
         }}
       />
     );
