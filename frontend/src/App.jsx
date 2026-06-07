@@ -80,6 +80,9 @@ function App() {
       .then((data) => {
         if (data.authenticated) {
           setUser(data.user);
+          if (data.user?.role !== 'admin') {
+            setCurrentView('workspace');
+          }
         }
       })
       .catch(() => {
@@ -250,7 +253,14 @@ function App() {
   }
 
   if (!user) {
-    return <LoginPage onLoginSuccess={(u) => setUser(u)} />;
+    return (
+      <LoginPage
+        onLoginSuccess={(u) => {
+          setUser(u);
+          setCurrentView('workspace');
+        }}
+      />
+    );
   }
 
   const currentStepIndex = workflowSteps.findIndex((step) => step.id === currentStep);
